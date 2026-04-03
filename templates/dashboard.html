@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+</head>
+<body>
+
+<h2>All Decisions</h2>
+
+<table border="1">
+<tr>
+<th>ID</th>
+<th>User</th>
+<th>Decision</th>
+<th>Confidence</th>
+<th>Adjusted</th>
+<th>Warning</th>
+<th>Outcome</th>
+<th>Action</th>
+</tr>
+
+{% for d in decisions %}
+<tr>
+<td>{{ d.id }}</td>
+<td>{{ d.user_id }}</td>
+<td>{{ d.decision_value }}</td>
+<td>{{ d.confidence }}</td>
+<td>{{ d.adjusted_estimate }}</td>
+<td>{{ d.anchor_warning }}</td>
+<td>{{ d.outcome_value }}</td>
+<td>
+{% if not d.outcome_value %}
+<a href="/log_outcome/{{ d.id }}">Add Outcome</a>
+{% endif %}
+</td>
+</tr>
+{% endfor %}
+
+</table>
+
+<br>
+<a href="/">Back</a>
+
+</body>
+</html>
