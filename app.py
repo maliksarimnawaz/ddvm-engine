@@ -62,15 +62,19 @@ Base.metadata.create_all(engine)
 # ============================================
 
 def generate_task():
-    true_value = float(np.random.normal(50, 10))
-    difficulty = float(np.random.choice([5, 10, 15]))
-    signal = float(true_value + np.random.normal(0, difficulty))
-    anchor = float(np.random.choice([30, 40, 50, 60, 70]))
+    # Anchor = last month's users (30k-70k), presented to user
+    anchor = float(np.random.choice([30, 40, 45, 50, 55, 60, 70]))
+    # True value = actual this month's users, ±15% of anchor
+    true_value = float(anchor * np.random.uniform(0.85, 1.15))
+    # Signal = analyst estimate, ±20% of anchor (may be wrong)
+    signal = float(anchor * np.random.uniform(0.80, 1.20))
+    # Difficulty = how far signal is from true value
+    difficulty = float(abs(signal - true_value))
     return {
-        "true_value": true_value,
-        "signal": signal,
-        "anchor": anchor,
-        "difficulty": difficulty
+        "true_value": round(true_value, 2),
+        "signal": round(signal, 2),
+        "anchor": round(anchor, 2),
+        "difficulty": round(difficulty, 2)
     }
 
 # ============================================

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DDVM — Decision Engine</title>
+<title>DDVM — Startup Prediction Task</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -26,69 +26,120 @@
     {% endif %}
   {% endwith %}
 
-  <div class="fade-up">
-    <p class="eyebrow">Decision Task</p>
-    <h1>Submit your<br><em>estimate</em></h1>
+  <div class="fade-up" id="intro-screen">
+    <p class="eyebrow">Instructions</p>
+    <h1>Startup growth<br><em>predictions</em></h1>
+    <div class="divider-gold"></div>
+    <div class="panel" style="margin-bottom:28px;">
+      <p style="font-size:16px; line-height:1.8; color:var(--text-2);">
+        You are reviewing growth data for early-stage startups.
+      </p>
+      <p style="font-size:16px; line-height:1.8; color:var(--text-2); margin-top:12px;">
+        In each round, you will see:
+      </p>
+      <div style="margin:16px 0 0 0;">
+        <div style="display:flex; gap:16px; align-items:flex-start; margin-bottom:12px;">
+          <span style="font-family:var(--mono); font-size:11px; color:var(--gold); padding-top:2px; min-width:20px;">01</span>
+          <p style="font-size:15px; color:var(--text); line-height:1.6;">The startup's <strong>user count from last month</strong></p>
+        </div>
+        <div style="display:flex; gap:16px; align-items:flex-start; margin-bottom:12px;">
+          <span style="font-family:var(--mono); font-size:11px; color:var(--gold); padding-top:2px; min-width:20px;">02</span>
+          <p style="font-size:15px; color:var(--text); line-height:1.6;">An <strong>analyst's estimate</strong> for this month</p>
+        </div>
+        <div style="display:flex; gap:16px; align-items:flex-start;">
+          <span style="font-family:var(--mono); font-size:11px; color:var(--gold); padding-top:2px; min-width:20px;">03</span>
+          <p style="font-size:15px; color:var(--text); line-height:1.6;">Your job: <strong>predict this month's user count</strong></p>
+        </div>
+      </div>
+      <div style="margin-top:20px; padding-top:20px; border-top:0.5px solid var(--border);">
+        <p style="font-size:13px; color:var(--text-3); font-family:var(--mono); letter-spacing:0.05em;">
+          The analyst estimate may or may not be accurate. Use your own judgment.
+        </p>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="user_id_intro">Your participant ID</label>
+      <input type="text" id="user_id_intro" placeholder="e.g. user_001" autocomplete="off">
+    </div>
+
+    <button class="btn btn-full" onclick="startTask()">Begin task →</button>
   </div>
 
-  <div class="divider-gold"></div>
+  <div id="task-screen" style="display:none;">
 
-  <div class="panel-gold fade-up-2" id="anchor-panel">
-    <p class="eyebrow">Reference anchor</p>
-    <div class="anchor-display" id="anchor-val">—</div>
-    <div class="signal-bar"></div>
-    <div style="display:flex; gap:48px; margin-top:8px;">
-      <div>
-        <p class="stat-label">Signal</p>
-        <p style="font-family:var(--mono); font-size:20px; color:var(--text);" id="signal-val">—</p>
-      </div>
-      <div>
-        <p class="stat-label">Difficulty</p>
-        <p style="font-family:var(--mono); font-size:20px; color:var(--text);" id="diff-val">—</p>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+      <p class="eyebrow" style="margin:0;">Prediction task</p>
+      <span style="font-family:var(--mono); font-size:12px; color:var(--text-3);" id="round-counter">Round 1 of 20</span>
+    </div>
+
+    <div class="panel-gold" style="margin-bottom:28px;">
+      <p class="eyebrow">Last month's users</p>
+      <div class="anchor-display" id="display-anchor">—</div>
+      <div class="signal-bar"></div>
+      <div style="margin-top:8px;">
+        <p class="stat-label">Analyst estimate for this month</p>
+        <p style="font-family:var(--mono); font-size:22px; color:var(--text);" id="display-signal">—</p>
       </div>
     </div>
+
+    <div style="padding:16px 20px; background:var(--bg-2); border-left:2px solid var(--border-gold); margin-bottom:32px;">
+      <p style="font-family:var(--mono); font-size:13px; color:var(--text-2); line-height:1.7;">
+        Based on last month's data and the analyst estimate above, predict this startup's user count for this month.
+      </p>
+    </div>
+
+    <form id="task-form">
+      <input type="hidden" name="user_id" id="f-user-id">
+      <input type="hidden" name="anchor" id="f-anchor">
+      <input type="hidden" name="signal" id="f-signal">
+      <input type="hidden" name="difficulty" id="f-difficulty">
+      <input type="hidden" name="true_value" id="f-true-value">
+      <input type="hidden" name="round_number" id="f-round">
+
+      <div class="field">
+        <label for="decision_value">Your prediction <span style="color:var(--text-3);">(in thousands of users)</span></label>
+        <input type="number" id="decision_value" name="decision_value"
+               placeholder="e.g. 52" step="0.1" min="0" required>
+      </div>
+
+      <div class="field">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <label style="margin:0;">How confident are you?</label>
+          <span class="confidence-display" id="conf-display">50</span>
+        </div>
+        <input type="range" id="confidence_slider" min="0" max="100" value="50" step="1">
+        <input type="hidden" id="confidence" name="confidence" value="50">
+        <div style="display:flex; justify-content:space-between; margin-top:6px;">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--text-3);">0 — Just guessing</span>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--text-3);">100 — Completely certain</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="reasoning">Why did you choose this number? <span style="color:var(--text-3);">(optional)</span></label>
+        <textarea id="reasoning" name="reasoning"
+                  placeholder="e.g. I ignored the analyst estimate because the growth trend seemed higher..."></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-full">Submit prediction →</button>
+    </form>
+
   </div>
 
-  <form method="POST" action="/" class="fade-up-3">
-    <input type="hidden" name="anchor" id="f-anchor">
-    <input type="hidden" name="signal" id="f-signal">
-    <input type="hidden" name="difficulty" id="f-difficulty">
-    <input type="hidden" name="true_value" id="f-true-value">
-
-    <div class="field">
-      <label for="user_id">Participant ID</label>
-      <input type="text" id="user_id" name="user_id" placeholder="e.g. user_001" required>
+  <div id="done-screen" style="display:none;">
+    <p class="eyebrow">Complete</p>
+    <h1>All rounds<br><em>finished</em></h1>
+    <div class="divider-gold"></div>
+    <div class="panel" style="margin-bottom:28px;">
+      <p style="font-size:16px; line-height:1.8; color:var(--text-2);">
+        Thank you. Your 20 predictions have been recorded.
+      </p>
+      <p style="font-size:14px; line-height:1.8; color:var(--text-3); margin-top:12px; font-family:var(--mono);">
+        Results will be analysed as part of the DDVM research program.
+      </p>
     </div>
-
-    <div class="field">
-      <label for="decision_value">Your estimate</label>
-      <input type="number" id="decision_value" name="decision_value"
-             placeholder="Enter numeric estimate" step="0.01" required>
-    </div>
-
-    <div class="field">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <label style="margin:0;">Confidence</label>
-        <span class="confidence-display" id="conf-display">50</span>
-      </div>
-      <input type="range" id="confidence_slider" min="0" max="100" value="50" step="1">
-      <input type="hidden" id="confidence" name="confidence" value="50">
-      <div style="display:flex; justify-content:space-between; margin-top:6px;">
-        <span style="font-family:var(--mono);font-size:10px;color:var(--text-3);">0 — No confidence</span>
-        <span style="font-family:var(--mono);font-size:10px;color:var(--text-3);">100 — Certain</span>
-      </div>
-    </div>
-
-    <div class="field">
-      <label for="reasoning">Reasoning <span style="color:var(--text-3)">(optional)</span></label>
-      <textarea id="reasoning" name="reasoning" placeholder="Briefly explain your estimate..."></textarea>
-    </div>
-
-    <button type="submit" class="btn btn-full">Submit estimate →</button>
-  </form>
-
-  <div style="margin-top:20px; text-align:center;">
-    <button class="btn-secondary" onclick="loadTask()">Generate new task</button>
+    <a href="/dashboard" class="btn">View dashboard →</a>
   </div>
 
 </div>
@@ -98,21 +149,38 @@
 </footer>
 
 <script>
-const API_BASE = '';
+const TOTAL_ROUNDS = 20;
+let currentRound = 1;
+let userId = '';
+
+function startTask() {
+  userId = document.getElementById('user_id_intro').value.trim();
+  if (!userId) { alert('Please enter your participant ID first.'); return; }
+  document.getElementById('intro-screen').style.display = 'none';
+  document.getElementById('task-screen').style.display = 'block';
+  loadTask();
+}
 
 function loadTask() {
-  fetch(API_BASE + '/task')
+  document.getElementById('round-counter').textContent = 'Round ' + currentRound + ' of ' + TOTAL_ROUNDS;
+  document.getElementById('f-user-id').value = userId;
+  document.getElementById('f-round').value = currentRound;
+
+  fetch('/task')
     .then(r => r.json())
     .then(data => {
-      document.getElementById('anchor-val').textContent = data.anchor.toFixed(1);
-      document.getElementById('signal-val').textContent = data.signal.toFixed(2);
-      document.getElementById('diff-val').textContent = data.difficulty.toFixed(0);
+      document.getElementById('display-anchor').textContent = data.anchor.toFixed(1) + 'k';
+      document.getElementById('display-signal').textContent = data.signal.toFixed(1) + 'k users';
       document.getElementById('f-anchor').value = data.anchor;
       document.getElementById('f-signal').value = data.signal;
       document.getElementById('f-difficulty').value = data.difficulty;
       document.getElementById('f-true-value').value = data.true_value;
-    })
-    .catch(() => {});
+      document.getElementById('decision_value').value = '';
+      document.getElementById('confidence_slider').value = 50;
+      document.getElementById('confidence').value = 50;
+      document.getElementById('conf-display').textContent = '50';
+      document.getElementById('reasoning').value = '';
+    });
 }
 
 document.getElementById('confidence_slider').addEventListener('input', function() {
@@ -120,7 +188,22 @@ document.getElementById('confidence_slider').addEventListener('input', function(
   document.getElementById('confidence').value = this.value;
 });
 
-loadTask();
+document.getElementById('task-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const formData = new FormData(this);
+
+  fetch('/', { method: 'POST', body: formData })
+    .then(() => {
+      if (currentRound >= TOTAL_ROUNDS) {
+        document.getElementById('task-screen').style.display = 'none';
+        document.getElementById('done-screen').style.display = 'block';
+      } else {
+        currentRound++;
+        loadTask();
+        window.scrollTo(0, 0);
+      }
+    });
+});
 </script>
 </body>
 </html>
