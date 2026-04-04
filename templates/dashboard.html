@@ -1,45 +1,105 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Dashboard</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DDVM — Dashboard</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+<div class="grain"></div>
 
-<h2>All Decisions</h2>
+<header>
+  <div class="header-inner">
+    <a href="/" class="wordmark">DDVM</a>
+    <a href="/" class="nav-link">← New decision</a>
+  </div>
+</header>
 
-<table border="1">
-<tr>
-<th>ID</th>
-<th>User</th>
-<th>Decision</th>
-<th>Confidence</th>
-<th>Adjusted</th>
-<th>Warning</th>
-<th>Outcome</th>
-<th>Action</th>
-</tr>
+<div class="container">
 
-{% for d in decisions %}
-<tr>
-<td>{{ d.id }}</td>
-<td>{{ d.user_id }}</td>
-<td>{{ d.decision_value }}</td>
-<td>{{ d.confidence }}</td>
-<td>{{ d.adjusted_estimate }}</td>
-<td>{{ d.anchor_warning }}</td>
-<td>{{ d.outcome_value }}</td>
-<td>
-{% if not d.outcome_value %}
-<a href="/log_outcome/{{ d.id }}">Add Outcome</a>
-{% endif %}
-</td>
-</tr>
-{% endfor %}
+  <div class="fade-up">
+    <p class="eyebrow">Research Console</p>
+    <h1>Decision<br><em>records</em></h1>
+  </div>
 
-</table>
+  <div class="divider-gold"></div>
 
-<br>
-<a href="/">Back</a>
+  <div class="stat-grid fade-up-2" style="margin-bottom:40px;">
+    <div class="stat-cell">
+      <p class="stat-label">Total decisions</p>
+      <p class="stat-value gold">{{ decisions | length }}</p>
+    </div>
+    <div class="stat-cell">
+      <p class="stat-label">With outcomes</p>
+      <p class="stat-value">{{ decisions | selectattr('outcome_value') | list | length }}</p>
+    </div>
+    <div class="stat-cell">
+      <p class="stat-label">Anchoring flags</p>
+      <p class="stat-value">{{ decisions | selectattr('anchor_warning') | list | length }}</p>
+    </div>
+  </div>
 
+  <div class="panel fade-up-3" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>User</th>
+          <th>Estimate</th>
+          <th>Confidence</th>
+          <th>Adjusted</th>
+          <th>Anchor flag</th>
+          <th>Outcome</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in decisions %}
+        <tr>
+          <td style="color:var(--text-3);">{{ d.id }}</td>
+          <td class="mono">{{ d.user_id }}</td>
+          <td class="mono">{{ "%.2f"|format(d.decision_value) }}</td>
+          <td class="mono">{{ d.confidence | int }}%</td>
+          <td class="mono">{{ "%.2f"|format(d.adjusted_estimate) if d.adjusted_estimate else '—' }}</td>
+          <td>
+            {% if d.anchor_warning %}
+              <span class="badge badge-warn">Flagged</span>
+            {% else %}
+              <span class="badge badge-none">Clear</span>
+            {% endif %}
+          </td>
+          <td class="mono">
+            {% if d.outcome_value %}
+              <span style="color:var(--gold);">{{ "%.2f"|format(d.outcome_value) }}</span>
+            {% else %}
+              <span style="color:var(--text-3);">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not d.outcome_value %}
+              <a href="/log_outcome/{{ d.id }}" class="btn-secondary" style="font-size:9px; padding:6px 12px;">Log</a>
+            {% else %}
+              <span class="badge badge-ok">Done</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not decisions %}
+        <tr>
+          <td colspan="8" style="text-align:center; padding:40px; color:var(--text-3); font-family:var(--mono); font-size:12px; letter-spacing:0.1em;">
+            No decisions recorded yet
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<footer class="page-footer">
+  <p>Decision Drift Validation Model — Research Console</p>
+</footer>
 </body>
 </html>
