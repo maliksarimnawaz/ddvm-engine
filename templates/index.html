@@ -359,52 +359,89 @@ condition = urlParams.get('condition') || 'control';
 
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
   window.scrollTo(0, 0);
 }
 
 function startStudy() {
   userId = document.getElementById('user_id_input').value.trim();
-  if (!userId) { document.getElementById('user_id_input').focus(); return; }
+  if (!userId) { 
+    document.getElementById('user_id_input').focus(); 
+    return; 
+  }
   show('screen-task');
   loadTask();
 }
 
 function updateProgress() {
   const pct = ((currentRound - 1) / TOTAL_ROUNDS) * 100;
-  document.getElementById('progress-fill').style.width = pct + '%';
+  const bar = document.getElementById('progress-fill');
+  if (bar) bar.style.width = pct + '%';
 }
 
 function loadTask() {
   updateProgress();
+
   document.getElementById('f-uid').value = userId;
   document.getElementById('f-condition').value = condition;
   document.getElementById('f-round').value = currentRound;
   document.getElementById('decision_value').value = '';
-  document.getElementById('reasoning').value = '';
-  document.getElementById('reasoning').style.display = 'none';
-  document.getElementById('reasoning-toggle').textContent = '+ Add reasoning (optional)';
+
+  const reasoningEl = document.getElementById('reasoning');
+  if (reasoningEl) {
+    reasoningEl.value = '';
+    reasoningEl.style.display = 'none';
+  }
+
+  const toggleBtn = document.getElementById('reasoning-toggle');
+  if (toggleBtn) {
+    toggleBtn.textContent = '+ Add reasoning (optional)';
+  }
+
   document.getElementById('intervention-strip').style.display = 'none';
-  document.getElementById('submit-btn').textContent = 'Submit prediction →';
-  document.getElementById('submit-btn').disabled = false;
+
+  const submitBtn = document.getElementById('submit-btn');
+  submitBtn.textContent = 'Submit prediction →';
+  submitBtn.disabled = false;
 
   fetch('/task')
-    .then(r => r.json())
+    .then(r => {
+      if (!r.ok) throw new Error('Task fetch failed');
+      return r.json();
+    })
     .then(data => {
-      document.getElementById('disp-anchor').textContent = data.anchor.toFixed(1);
-      document.getElementById('disp-signal').textContent = data.signal.toFixed(1);
+      // SAFE number handling
+      const anchor = Number(data.anchor);
+      const signal = Number(data.signal);
+
+      document.getElementById('disp-anchor').textContent =
+        isNaN(anchor) ? '—' : anchor.toFixed(1);
+
+      document.getElementById('disp-signal').textContent =
+        isNaN(signal) ? '—' : signal.toFixed(1);
+
       document.getElementById('f-anchor').value = data.anchor;
       document.getElementById('f-displacement').value = data.anchor_displacement;
       document.getElementById('f-signal').value = data.signal;
       document.getElementById('f-noise').value = data.signal_noise;
       document.getElementById('f-true').value = data.true_value;
-      setTimeout(() => document.getElementById('decision_value').focus(), 100);
+
+      setTimeout(() => {
+        const input = document.getElementById('decision_value');
+        if (input) input.focus();
+      }, 100);
+    })
+    .catch(err => {
+      console.error('Task load error:', err);
     });
 }
 
 function toggleReasoning() {
   const t = document.getElementById('reasoning');
   const btn = document.getElementById('reasoning-toggle');
+  if (!t || !btn) return;
+
   if (t.style.display === 'none') {
     t.style.display = 'block';
     btn.textContent = '− Hide reasoning';
@@ -417,8 +454,12 @@ function toggleReasoning() {
 
 document.getElementById('task-form').addEventListener('submit', function(e) {
   e.preventDefault();
+
   const val = parseFloat(document.getElementById('decision_value').value);
-  if (isNaN(val) || val < 0) { document.getElementById('decision_value').focus(); return; }
+  if (isNaN(val) || val < 0) {
+    document.getElementById('decision_value').focus();
+    return;
+  }
 
   const btn = document.getElementById('submit-btn');
   btn.textContent = 'Saving...';
@@ -429,6 +470,7 @@ document.getElementById('task-form').addEventListener('submit', function(e) {
     .then(r => r.json())
     .then(data => {
       btn.classList.remove('saving');
+
       if (data.status === 'error') {
         btn.textContent = 'Submit prediction →';
         btn.disabled = false;
@@ -469,6 +511,11 @@ document.getElementById('task-form').addEventListener('submit', function(e) {
       btn.classList.remove('saving');
     });
 });
+
+/* ===== KEEP YOUR ORIGINAL FUNCTIONS BELOW UNCHANGED ===== */
+/* showBatchReveal() */
+/* continueAfterReveal() */
+/* showFinalAnalysis() */
 
 function showBatchReveal() {
   const from = pendingRevealFrom;
