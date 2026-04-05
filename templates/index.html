@@ -5,6 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DDVM — Startup Prediction Task</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+.result-panel {
+  background: var(--bg-1);
+  border: 0.5px solid var(--border-gold);
+  border-radius: 2px;
+  padding: 28px 32px;
+  margin-bottom: 28px;
+  display: none;
+}
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 0.5px solid var(--border);
+}
+.result-row:last-child { border-bottom: none; }
+.result-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; color: var(--text-3); text-transform: uppercase; }
+.result-value { font-family: var(--mono); font-size: 16px; color: var(--text); }
+.result-value.good { color: #2EAA6A; }
+.result-value.warn { color: var(--gold); }
+.result-value.bad { color: #E55; }
+.intervention-box {
+  border-left: 2px solid var(--gold);
+  background: var(--gold-glow);
+  padding: 14px 20px;
+  margin-top: 20px;
+  display: none;
+}
+.intervention-box p {
+  font-family: var(--mono); font-size: 13px; color: var(--text); line-height: 1.6;
+}
+.intervention-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em;
+  color: var(--gold); text-transform: uppercase; margin-bottom: 6px;
+}
+</style>
 </head>
 <body>
 <div class="grain"></div>
@@ -17,14 +54,6 @@
 </header>
 
 <div class="container">
-
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="flash {% if category == 'error' %}error{% endif %} fade-up">{{ message }}</div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
 
   <div class="fade-up" id="intro-screen">
     <p class="eyebrow">Instructions</p>
@@ -53,7 +82,7 @@
       </div>
       <div style="margin-top:20px; padding-top:20px; border-top:0.5px solid var(--border);">
         <p style="font-size:13px; color:var(--text-3); font-family:var(--mono); letter-spacing:0.05em;">
-          The analyst estimate may or may not be accurate. Use your own judgment.
+          After each prediction, you will see the actual outcome. The analyst estimate may or may not be accurate — use your own judgment.
         </p>
       </div>
     </div>
@@ -62,7 +91,6 @@
       <label for="user_id_intro">Your participant ID</label>
       <input type="text" id="user_id_intro" placeholder="e.g. user_001" autocomplete="off">
     </div>
-
     <button class="btn btn-full" onclick="startTask()">Begin task →</button>
   </div>
 
@@ -73,7 +101,7 @@
       <span style="font-family:var(--mono); font-size:12px; color:var(--text-3);" id="round-counter">Round 1 of 20</span>
     </div>
 
-    <div class="panel-gold" style="margin-bottom:28px;">
+    <div class="panel-gold" style="margin-bottom:28px;" id="task-data-panel">
       <p class="eyebrow">Last month's users</p>
       <div class="anchor-display" id="display-anchor">—</div>
       <div class="signal-bar"></div>
@@ -83,10 +111,30 @@
       </div>
     </div>
 
-    <div style="padding:16px 20px; background:var(--bg-2); border-left:2px solid var(--border-gold); margin-bottom:32px;">
+    <div style="padding:16px 20px; background:var(--bg-2); border-left:2px solid var(--border-gold); margin-bottom:32px;" id="task-prompt-box">
       <p style="font-family:var(--mono); font-size:13px; color:var(--text-2); line-height:1.7;">
         Based on last month's data and the analyst estimate above, predict this startup's user count for this month.
       </p>
+    </div>
+
+    <div id="result-panel" class="result-panel">
+      <p class="eyebrow" style="margin-bottom:16px;">Round result</p>
+      <div class="result-row">
+        <span class="result-label">Your prediction</span>
+        <span class="result-value" id="res-estimate">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Actual outcome</span>
+        <span class="result-value good" id="res-actual">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Your error</span>
+        <span class="result-value" id="res-error">—</span>
+      </div>
+      <div id="intervention-box" class="intervention-box">
+        <p class="intervention-label">System note</p>
+        <p id="intervention-text"></p>
+      </div>
     </div>
 
     <form id="task-form">
@@ -97,13 +145,13 @@
       <input type="hidden" name="true_value" id="f-true-value">
       <input type="hidden" name="round_number" id="f-round">
 
-      <div class="field">
+      <div class="field" id="estimate-field">
         <label for="decision_value">Your prediction <span style="color:var(--text-3);">(in thousands of users)</span></label>
         <input type="number" id="decision_value" name="decision_value"
                placeholder="e.g. 52" step="0.1" min="0" required>
       </div>
 
-      <div class="field">
+      <div class="field" id="confidence-field">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
           <label style="margin:0;">How confident are you?</label>
           <span class="confidence-display" id="conf-display">50</span>
@@ -116,13 +164,14 @@
         </div>
       </div>
 
-      <div class="field">
+      <div class="field" id="reasoning-field">
         <label for="reasoning">Why did you choose this number? <span style="color:var(--text-3);">(optional)</span></label>
         <textarea id="reasoning" name="reasoning"
-                  placeholder="e.g. I ignored the analyst estimate because the growth trend seemed higher..."></textarea>
+                  placeholder="e.g. I ignored the analyst estimate because..."></textarea>
       </div>
 
-      <button type="submit" class="btn btn-full">Submit prediction →</button>
+      <button type="submit" class="btn btn-full" id="submit-btn">Submit prediction →</button>
+      <button type="button" class="btn btn-full" id="next-btn" style="display:none; margin-top:12px;" onclick="nextRound()">Next round →</button>
     </form>
 
   </div>
@@ -166,6 +215,19 @@ function loadTask() {
   document.getElementById('f-user-id').value = userId;
   document.getElementById('f-round').value = currentRound;
 
+  document.getElementById('result-panel').style.display = 'none';
+  document.getElementById('intervention-box').style.display = 'none';
+  document.getElementById('estimate-field').style.display = 'block';
+  document.getElementById('confidence-field').style.display = 'block';
+  document.getElementById('reasoning-field').style.display = 'block';
+  document.getElementById('submit-btn').style.display = 'block';
+  document.getElementById('next-btn').style.display = 'none';
+  document.getElementById('decision_value').value = '';
+  document.getElementById('confidence_slider').value = 50;
+  document.getElementById('confidence').value = 50;
+  document.getElementById('conf-display').textContent = '50';
+  document.getElementById('reasoning').value = '';
+
   fetch('/task')
     .then(r => r.json())
     .then(data => {
@@ -175,12 +237,18 @@ function loadTask() {
       document.getElementById('f-signal').value = data.signal;
       document.getElementById('f-difficulty').value = data.difficulty;
       document.getElementById('f-true-value').value = data.true_value;
-      document.getElementById('decision_value').value = '';
-      document.getElementById('confidence_slider').value = 50;
-      document.getElementById('confidence').value = 50;
-      document.getElementById('conf-display').textContent = '50';
-      document.getElementById('reasoning').value = '';
     });
+}
+
+function nextRound() {
+  if (currentRound >= TOTAL_ROUNDS) {
+    document.getElementById('task-screen').style.display = 'none';
+    document.getElementById('done-screen').style.display = 'block';
+  } else {
+    currentRound++;
+    loadTask();
+    window.scrollTo(0, 0);
+  }
 }
 
 document.getElementById('confidence_slider').addEventListener('input', function() {
@@ -190,18 +258,43 @@ document.getElementById('confidence_slider').addEventListener('input', function(
 
 document.getElementById('task-form').addEventListener('submit', function(e) {
   e.preventDefault();
-  const formData = new FormData(this);
 
-  fetch('/', { method: 'POST', body: formData })
-    .then(() => {
-      if (currentRound >= TOTAL_ROUNDS) {
-        document.getElementById('task-screen').style.display = 'none';
-        document.getElementById('done-screen').style.display = 'block';
-      } else {
-        currentRound++;
-        loadTask();
-        window.scrollTo(0, 0);
+  const formData = new FormData(this);
+  document.getElementById('submit-btn').textContent = 'Saving...';
+  document.getElementById('submit-btn').disabled = true;
+
+  fetch('/submit', { method: 'POST', body: formData })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'error') {
+        alert('Error: ' + data.msg);
+        document.getElementById('submit-btn').textContent = 'Submit prediction →';
+        document.getElementById('submit-btn').disabled = false;
+        return;
       }
+
+      const error = data.error;
+      const errorClass = error < 5 ? 'good' : error < 15 ? 'warn' : 'bad';
+
+      document.getElementById('res-estimate').textContent = data.your_estimate + 'k';
+      document.getElementById('res-actual').textContent = data.true_value + 'k';
+      document.getElementById('res-error').textContent = error.toFixed(1) + 'k';
+      document.getElementById('res-error').className = 'result-value ' + errorClass;
+
+      if (data.intervention) {
+        document.getElementById('intervention-text').textContent = data.intervention;
+        document.getElementById('intervention-box').style.display = 'block';
+      }
+
+      document.getElementById('result-panel').style.display = 'block';
+      document.getElementById('estimate-field').style.display = 'none';
+      document.getElementById('confidence-field').style.display = 'none';
+      document.getElementById('reasoning-field').style.display = 'none';
+      document.getElementById('submit-btn').style.display = 'none';
+      document.getElementById('next-btn').style.display = 'block';
+      document.getElementById('next-btn').textContent = currentRound >= TOTAL_ROUNDS ? 'Finish →' : 'Next round →';
+
+      window.scrollTo(0, 0);
     });
 });
 </script>

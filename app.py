@@ -205,49 +205,71 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "ddvm_dev_secret")
 
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/", methods=["GET"])
 def index():
-    if request.method == "POST":
-        try:
-            user_id = request.form.get("user_id", "").strip()
-            decision_value = float(request.form.get("decision_value"))
-            confidence = float(request.form.get("confidence", 50))
-            reasoning = request.form.get("reasoning", "")
-            anchor = float(request.form.get("anchor", 50))
-            signal = float(request.form.get("signal", 50))
-            difficulty = float(request.form.get("difficulty", 10))
-            true_value = float(request.form.get("true_value", 50))
-
-            anchor_warning = abs(decision_value - anchor) < (abs(anchor) * 0.05 + 1)
-            adjusted_estimate = decision_value * 0.7 + true_value * 0.3
-
-            with Session() as session:
-                d = Decision(
-                    user_id=user_id,
-                    decision_value=decision_value,
-                    confidence=confidence,
-                    reasoning=reasoning,
-                    anchor=anchor,
-                    signal=signal,
-                    difficulty=difficulty,
-                    true_value=true_value,
-                    adjusted_estimate=adjusted_estimate,
-                    anchor_warning=anchor_warning
-                )
-                session.add(d)
-                session.commit()
-
-            msg = f"Estimate recorded — adjusted: {round(adjusted_estimate, 2)}"
-            if anchor_warning:
-                msg += " — anchoring suspected"
-            flash(msg)
-
-        except Exception as e:
-            flash(f"Error: {str(e)}", "error")
-
-        return redirect(url_for("index"))
-
     return render_template("index.html")
+
+
+@app.route("/submit", methods=["POST"])
+def submit():
+    try:
+        user_id = request.form.get("user_id", "").strip()
+        decision_value = float(request.form.get("decision_value"))
+        confidence = float(request.form.get("confidence", 50))
+        reasoning = request.form.get("reasoning", "")
+        anchor = float(request.form.get("anchor", 50))
+        signal = float(request.form.get("signal", 50))
+        difficulty = float(request.form.get("difficulty", 10))
+        true_value = float(request.form.get("true_value", 50))
+
+        anchor_warning = abs(decision_value - anchor) < (abs(anchor) * 0.05 + 1)
+        adjusted_estimate = round(decision_value * 0.7 + true_value * 0.3, 2)
+        error = round(abs(decision_value - true_value), 2)
+
+        with Session() as session:
+            d = Decision(
+                user_id=user_id,
+                decision_value=decision_value,
+                confidence=confidence,
+                reasoning=reasoning,
+                anchor=anchor,
+                signal=signal,
+                difficulty=difficulty,
+                true_value=true_value,
+                adjusted_estimate=adjusted_estimate,
+                anchor_warning=anchor_warning,
+                outcome_value=true_value
+            )
+            session.add(d)
+            session.commit()
+            decision_id = d.id
+
+        df = get_user_df(user_id)
+        intervention = None
+        if len(df) >= 5:
+            bandit = load_bandit(user_id)
+            action = select_action(bandit)
+            errors = np.abs(df["decision"] - df["actual_outcome"]).values
+            reward = float(np.mean(errors[:-3]) - np.mean(errors[-3:])) if len(errors) > 3 else 0.0
+            bandit = update_bandit(bandit, action, reward)
+            save_bandit(user_id, bandit)
+            with Session() as session:
+                session.add(Intervention(user_id=user_id, action=action))
+                session.commit()
+            intervention = FEEDBACK_TEXT[action]
+
+        return jsonify({
+            "status": "ok",
+            "decision_id": decision_id,
+            "true_value": round(true_value, 1),
+            "your_estimate": round(decision_value, 1),
+            "error": error,
+            "anchor_warning": anchor_warning,
+            "intervention": intervention
+        })
+
+    except Exception as e:
+        return jsonify({"status": "error", "msg": str(e)}), 400
 
 
 @app.route("/dashboard")
