@@ -6,22 +6,24 @@
 <title>Prediction Study</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <style>
-/* ── YOUR ORIGINAL CSS STAYS INTACT ── */
 .progress-track { height: 1px; background: var(--border); margin-bottom: 48px; }
 .progress-fill { height: 1px; background: var(--gold); transition: width 0.6s ease; width: 0%; }
+
 .stimulus { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border-gold); border: 0.5px solid var(--border-gold); margin-bottom: 36px; }
 .stimulus-cell { background: var(--bg-1); padding: 28px 24px; }
 .stimulus-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.25em; color: var(--text-3); text-transform: uppercase; margin-bottom: 12px; }
 .stimulus-value { font-family: var(--mono); font-size: 36px; font-weight: 300; color: var(--text); letter-spacing: -0.02em; line-height: 1; }
 .stimulus-unit { font-family: var(--mono); font-size: 11px; color: var(--text-3); margin-top: 6px; }
+
 .estimate-input { width: 100%; background: transparent; border: none; border-bottom: 0.5px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 32px; font-weight: 300; padding: 16px 0; outline: none; transition: border-color 0.2s; -moz-appearance: textfield; letter-spacing: -0.01em; }
 .estimate-input:focus { border-color: var(--gold); }
 .estimate-input::placeholder { color: var(--text-3); }
-.estimate-input::-webkit-outer-spin-button,
-.estimate-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.estimate-input::-webkit-outer-spin-button, .estimate-input::-webkit-inner-spin-button { -webkit-appearance: none; }
 .input-unit { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; color: var(--text-3); text-transform: uppercase; margin-top: 8px; }
+
 .reasoning-toggle { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; color: var(--text-3); text-transform: uppercase; cursor: pointer; background: none; border: none; padding: 0; margin-bottom: 16px; display: block; transition: color 0.2s; }
 .reasoning-toggle:hover { color: var(--text-2); }
+
 .reveal-card { background: var(--bg-1); border: 0.5px solid var(--border); padding: 16px 20px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
 .reveal-card.accurate { border-color: rgba(46,170,106,0.35); }
 .reveal-card.close { border-color: var(--border-gold); }
@@ -35,6 +37,7 @@
 .delta-good { background: rgba(46,170,106,0.1); color: #2EAA6A; }
 .delta-mid { background: rgba(201,168,76,0.1); color: var(--gold); }
 .delta-bad { background: rgba(220,80,80,0.1); color: #DC5050; }
+
 .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); margin-bottom: 2px; }
 .metric-cell { background: var(--bg-1); padding: 20px 18px; }
 .metric-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em; color: var(--text-3); text-transform: uppercase; margin-bottom: 8px; }
@@ -43,28 +46,33 @@
 .metric-value.warn { color: var(--gold); }
 .metric-value.bad { color: #DC5050; }
 .metric-sub { font-family: var(--mono); font-size: 9px; color: var(--text-3); margin-top: 5px; letter-spacing: 0.05em; line-height: 1.5; }
+
 .abi-track { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
 .abi-track-label { font-family: var(--mono); font-size: 9px; color: var(--text-3); width: 44px; text-align: right; }
 .abi-track-bar { flex: 1; height: 1px; background: var(--border); position: relative; overflow: visible; }
 .abi-track-fill { height: 1px; position: absolute; top: 0; transition: width 0.6s ease, left 0.6s ease; }
 .abi-track-val { font-family: var(--mono); font-size: 9px; color: var(--text-2); min-width: 36px; }
+
 .css-state { display: inline-block; font-family: var(--mono); font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; padding: 3px 8px; border-radius: 2px; margin: 2px; }
 .css-under { background: rgba(46,170,106,0.1); color: #2EAA6A; border: 0.5px solid rgba(46,170,106,0.3); }
 .css-moderate { background: rgba(201,168,76,0.08); color: var(--gold); border: 0.5px solid var(--border-gold); }
 .css-over { background: rgba(220,80,80,0.08); color: #DC5050; border: 0.5px solid rgba(220,80,80,0.25); }
+
 .insight-box { border-left: 2px solid var(--gold); background: var(--gold-glow); padding: 16px 20px; margin-bottom: 20px; }
 .insight-box p { font-family: var(--mono); font-size: 12px; color: var(--text); line-height: 1.75; letter-spacing: 0.03em; }
+
 .intervention-strip { border-left: 2px solid var(--border-gold); padding: 12px 16px; margin-top: 20px; display: none; }
 .intervention-strip p { font-family: var(--mono); font-size: 11px; color: var(--text-2); line-height: 1.65; letter-spacing: 0.03em; }
+
 .screen { display: none; }
 .screen.active { display: block; }
+
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 .saving { animation: pulse 1s infinite; }
 </style>
 </head>
 <body>
 <div class="grain"></div>
-
 <header>
   <div class="header-inner">
     <span class="wordmark">Prediction Study</span>
@@ -74,116 +82,105 @@
 
 <div class="container">
 
-<!-- ══ SCREEN 0 — INTRO ══ -->
-<div id="screen-intro" class="screen active">
-  <div class="fade-up">
-    <p class="eyebrow">Study instructions</p>
-    <h1>Market<br><em>forecasting</em></h1>
-  </div>
-  <div class="divider-gold"></div>
-  <div class="panel fade-up-2" style="margin-bottom:28px;">
-    <p style="font-size:15px; line-height:1.85; color:var(--text-2);">
-      You will make a series of market predictions. In each round you will see two figures — a recent reported figure and a market forecast — and submit your own prediction.
-    </p>
-    <div style="margin-top:24px; padding-top:24px; border-top:0.5px solid var(--border);">
-      <div style="display:flex; gap:14px; margin-bottom:12px;">
-        <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
-        <p style="font-size:14px;color:var(--text);line-height:1.6;"><strong>20 rounds</strong> in total</p>
+  <!-- INTRO SCREEN -->
+  <div id="screen-intro" class="screen active">
+    <div class="fade-up">
+      <p class="eyebrow">Study instructions</p>
+      <h1>Market<br><em>forecasting</em></h1>
+    </div>
+    <div class="divider-gold"></div>
+    <div class="panel fade-up-2" style="margin-bottom:28px;">
+      <p style="font-size:15px; line-height:1.85; color:var(--text-2);">
+        You will make a series of market predictions. In each round you will see two figures — a recent reported figure and a market forecast — and submit your own prediction.
+      </p>
+      <div style="margin-top:24px; padding-top:24px; border-top:0.5px solid var(--border);">
+        <div style="display:flex; gap:14px; margin-bottom:12px;">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
+          <p style="font-size:14px;color:var(--text);line-height:1.6;"><strong>20 rounds</strong> in total</p>
+        </div>
+        <div style="display:flex; gap:14px; margin-bottom:12px;">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
+          <p style="font-size:14px;color:var(--text);line-height:1.6;"><strong>Full analysis</strong> of your predictions shown at the end</p>
+        </div>
+        <div style="display:flex; gap:14px; margin-bottom:12px;">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
+          <p style="font-size:14px;color:var(--text);line-height:1.6;">The market forecast <strong>may or may not be accurate</strong></p>
+        </div>
+        <div style="display:flex; gap:14px;">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
+          <p style="font-size:14px;color:var(--text);line-height:1.6;">Takes approximately <strong>8–10 minutes</strong></p>
+        </div>
       </div>
-      <div style="display:flex; gap:14px; margin-bottom:12px;">
-        <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
-        <p style="font-size:14px;color:var(--text);line-height:1.6;"><strong>Full analysis</strong> of your predictions shown at the end</p>
+    </div>
+    <div class="field fade-up-3">
+      <label for="user_id_input">Participant ID</label>
+      <input type="text" id="user_id_input" placeholder="Choose any identifier, e.g. falcon_42" autocomplete="off" spellcheck="false">
+      <p style="font-family:var(--mono);font-size:10px;color:var(--text-3);margin-top:8px;letter-spacing:0.05em;">No personal information is collected.</p>
+    </div>
+    <button class="btn btn-full fade-up-3" onclick="startStudy()">Begin study →</button>
+  </div>
+
+  <!-- TASK SCREEN -->
+  <div id="screen-task" class="screen">
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+
+    <div class="stimulus">
+      <div class="stimulus-cell">
+        <p class="stimulus-label">Last month's figure</p>
+        <p class="stimulus-value" id="disp-anchor">—</p>
+        <p class="stimulus-unit">thousands of users</p>
       </div>
-      <div style="display:flex; gap:14px; margin-bottom:12px;">
-        <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
-        <p style="font-size:14px;color:var(--text);line-height:1.6;">The market forecast <strong>may or may not be accurate</strong></p>
-      </div>
-      <div style="display:flex; gap:14px;">
-        <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
-        <p style="font-size:14px;color:var(--text);line-height:1.6;">Takes approximately <strong>8–10 minutes</strong></p>
+      <div class="stimulus-cell">
+        <p class="stimulus-label">Market forecast</p>
+        <p class="stimulus-value" id="disp-signal">—</p>
+        <p class="stimulus-unit">thousands of users</p>
       </div>
     </div>
-  </div>
-  <div class="field fade-up-3">
-    <label for="user_id_input">Participant ID</label>
-    <input type="text" id="user_id_input"
-           placeholder="Choose any identifier, e.g. falcon_42"
-           autocomplete="off" spellcheck="false">
-    <p style="font-family:var(--mono);font-size:10px;color:var(--text-3);margin-top:8px;letter-spacing:0.05em;">
-      No personal information is collected.
-    </p>
-  </div>
-  <button class="btn btn-full fade-up-3" onclick="startStudy()">Begin study →</button>
-</div>
 
-<!-- ══ SCREEN 1 — TASK ══ -->
-<div id="screen-task" class="screen">
-  <div class="progress-track">
-    <div class="progress-fill" id="progress-fill"></div>
-  </div>
+    <form id="task-form" autocomplete="off">
+      <input type="hidden" name="user_id" id="f-uid">
+      <input type="hidden" name="condition" id="f-condition">
+      <input type="hidden" name="round_number" id="f-round">
+      <input type="hidden" name="anchor" id="f-anchor">
+      <input type="hidden" name="anchor_displacement" id="f-displacement">
+      <input type="hidden" name="signal" id="f-signal">
+      <input type="hidden" name="signal_noise" id="f-noise">
+      <input type="hidden" name="true_value" id="f-true">
 
-  <div class="stimulus">
-    <div class="stimulus-cell">
-      <p class="stimulus-label">Last month's figure</p>
-      <p class="stimulus-value" id="disp-anchor">—</p>
-      <p class="stimulus-unit">thousands of users</p>
-    </div>
-    <div class="stimulus-cell">
-      <p class="stimulus-label">Market forecast</p>
-      <p class="stimulus-value" id="disp-signal">—</p>
-      <p class="stimulus-unit">thousands of users</p>
-    </div>
+      <div class="field">
+        <label for="decision_value">Your prediction</label>
+        <input type="number" class="estimate-input" id="decision_value" name="decision_value" placeholder="0.0" step="0.1" min="0" required>
+        <p class="input-unit">thousands of users</p>
+      </div>
+
+      <div class="field" style="margin-bottom:16px;">
+        <button type="button" class="reasoning-toggle" onclick="toggleReasoning()">+ Add reasoning (optional)</button>
+        <textarea id="reasoning" name="reasoning" placeholder="Why did you choose this value?" style="display:none; margin-top:0;"></textarea>
+      </div>
+
+      <div class="intervention-strip" id="intervention-strip">
+        <p id="intervention-text"></p>
+      </div>
+
+      <button type="submit" class="btn btn-full" id="submit-btn">Submit prediction →</button>
+    </form>
   </div>
 
-  <form id="task-form" autocomplete="off">
-    <input type="hidden" name="user_id" id="f-uid">
-    <input type="hidden" name="condition" id="f-condition">
-    <input type="hidden" name="round_number" id="f-round">
-    <input type="hidden" name="anchor" id="f-anchor">
-    <input type="hidden" name="anchor_displacement" id="f-displacement">
-    <input type="hidden" name="signal" id="f-signal">
-    <input type="hidden" name="signal_noise" id="f-noise">
-    <input type="hidden" name="true_value" id="f-true">
+  <!-- BATCH REVEAL SCREEN -->
+  <div id="screen-reveal" class="screen">
+    <p class="eyebrow" id="reveal-eyebrow">Rounds 1–5 results</p>
+    <h1>Batch<br><em>results</em></h1>
+    <div class="divider-gold"></div>
+    <div id="reveal-cards" style="margin-bottom:32px;"></div>
+    <button class="btn btn-full" onclick="continueAfterReveal()">Continue →</button>
+  </div>
 
-    <div class="field">
-      <label for="decision_value">Your prediction</label>
-      <input type="number" class="estimate-input" id="decision_value"
-             name="decision_value" placeholder="0.0"
-             step="0.1" min="0" required>
-      <p class="input-unit">thousands of users</p>
-    </div>
-
-    <div class="field" style="margin-bottom:16px;">
-      <button type="button" class="reasoning-toggle"
-              onclick="toggleReasoning()">+ Add reasoning (optional)</button>
-      <textarea id="reasoning" name="reasoning"
-                placeholder="Why did you choose this value?"
-                style="display:none; margin-top:0;"></textarea>
-    </div>
-
-    <div class="intervention-strip" id="intervention-strip">
-      <p id="intervention-text"></p>
-    </div>
-
-    <button type="submit" class="btn btn-full" id="submit-btn">
-      Submit prediction →
-    </button>
-  </form>
-</div>
-
-<!-- ══ SCREEN 2 — BATCH REVEAL ══ -->
-<div id="screen-reveal" class="screen">
-  <p class="eyebrow" id="reveal-eyebrow">Rounds 1–5 results</p>
-  <h1>Batch<br><em>results</em></h1>
-  <div class="divider-gold"></div>
-  <div id="reveal-cards" style="margin-bottom:32px;"></div>
-  <button class="btn btn-full" onclick="continueAfterReveal()">Continue →</button>
-</div>
-
-<!-- ══ SCREEN 3 — END ANALYSIS ══ -->
-<div id="screen-analysis" class="screen">
-<!-- … the rest of your metric grids, ABI, CSS state sequence, insight box … -->
-</div>
+  <!-- FINAL ANALYSIS SCREEN -->
+  <div id="screen-analysis" class="screen">
+    <!-- ... metrics, ABI, CSS, insight boxes ... all unchanged ... -->
+  </div>
 
 </div>
 
@@ -213,10 +210,7 @@ function show(id) {
 
 function startStudy() {
   userId = document.getElementById('user_id_input').value.trim();
-  if (!userId) { 
-    document.getElementById('user_id_input').focus(); 
-    return; 
-  }
+  if (!userId) { document.getElementById('user_id_input').focus(); return; }
   show('screen-task');
   loadTask();
 }
@@ -236,144 +230,97 @@ function loadTask() {
   document.getElementById('decision_value').value = '';
 
   const reasoningEl = document.getElementById('reasoning');
-  if (reasoningEl) {
-    reasoningEl.value = '';
-    reasoningEl.style.display = 'none';
-  }
-
+  if (reasoningEl) { reasoningEl.value=''; reasoningEl.style.display='none'; }
   const toggleBtn = document.getElementById('reasoning-toggle');
-  if (toggleBtn) {
-    toggleBtn.textContent = '+ Add reasoning (optional)';
-  }
-
+  if (toggleBtn) toggleBtn.textContent = '+ Add reasoning (optional)';
   document.getElementById('intervention-strip').style.display = 'none';
-
   const submitBtn = document.getElementById('submit-btn');
-  submitBtn.textContent = 'Submit prediction →';
-  submitBtn.disabled = false;
+  submitBtn.textContent = 'Submit prediction →'; submitBtn.disabled=false; submitBtn.classList.remove('saving');
 
   fetch('/task')
-    .then(r => {
-      if (!r.ok) throw new Error('Task fetch failed');
-      return r.json();
-    })
+    .then(r => r.json())
     .then(data => {
       const anchor = Number(data.anchor);
       const signal = Number(data.signal);
-
-      document.getElementById('disp-anchor').textContent =
-        isNaN(anchor) ? '—' : anchor.toFixed(1);
-
-      document.getElementById('disp-signal').textContent =
-        isNaN(signal) ? '—' : signal.toFixed(1);
-
+      document.getElementById('disp-anchor').textContent = isNaN(anchor)?'—':anchor.toFixed(1);
+      document.getElementById('disp-signal').textContent = isNaN(signal)?'—':signal.toFixed(1);
       document.getElementById('f-anchor').value = data.anchor;
       document.getElementById('f-displacement').value = data.anchor_displacement;
       document.getElementById('f-signal').value = data.signal;
       document.getElementById('f-noise').value = data.signal_noise;
       document.getElementById('f-true').value = data.true_value;
-
-      setTimeout(() => {
-        const input = document.getElementById('decision_value');
-        if (input) input.focus();
-      }, 100);
-    })
-    .catch(e => console.error(e));
+      setTimeout(()=>{document.getElementById('decision_value').focus()},100);
+    });
 }
 
 function toggleReasoning() {
-  const reasoningEl = document.getElementById('reasoning');
-  const toggleBtn = document.getElementById('reasoning-toggle');
-  if (!reasoningEl || !toggleBtn) return;
-
-  if (reasoningEl.style.display === 'none') {
-    reasoningEl.style.display = 'block';
-    toggleBtn.textContent = '− Hide reasoning';
-    reasoningEl.focus();
-  } else {
-    reasoningEl.style.display = 'none';
-    toggleBtn.textContent = '+ Add reasoning (optional)';
-  }
+  const t=document.getElementById('reasoning'), btn=document.getElementById('reasoning-toggle');
+  if (!t||!btn) return;
+  if(t.style.display==='none'){ t.style.display='block'; btn.textContent='− Hide reasoning'; t.focus(); }
+  else { t.style.display='none'; btn.textContent='+ Add reasoning (optional)'; }
 }
 
 document.getElementById('task-form').addEventListener('submit', function(e) {
   e.preventDefault();
+  const val = parseFloat(document.getElementById('decision_value').value);
+  if (isNaN(val)) return;
+
   const form = e.target;
-  const submitBtn = document.getElementById('submit-btn');
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Saving…';
-
   const formData = new FormData(form);
-  const payload = Object.fromEntries(formData.entries());
 
-  fetch('/submit', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  })
-    .then(r => r.json())
-    .then(resp => {
+  const submitBtn = document.getElementById('submit-btn');
+  submitBtn.textContent = 'Saving…'; submitBtn.disabled=true; submitBtn.classList.add('saving');
+
+  fetch('/submit', { method:'POST', body: formData })
+    .then(r=>r.json())
+    .then(resp=>{
       roundData.push(resp);
-
-      if (currentRound % REVEAL_EVERY === 0 || currentRound === TOTAL_ROUNDS) {
-        pendingRevealFrom = currentRound - (REVEAL_EVERY - 1);
-        showRevealBatch();
+      if(currentRound%REVEAL_EVERY===0 || currentRound===TOTAL_ROUNDS){
+        showReveal();
       } else {
-        currentRound++;
-        loadTask();
+        currentRound++; loadTask();
       }
-    })
-    .catch(err => {
-      console.error(err);
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Submit prediction →';
     });
 });
 
-function showRevealBatch() {
+function showReveal() {
   show('screen-reveal');
-  const cardsDiv = document.getElementById('reveal-cards');
-  cardsDiv.innerHTML = '';
-
-  const endRound = Math.min(pendingRevealFrom + REVEAL_EVERY - 1, roundData.length);
-  for (let i = pendingRevealFrom - 1; i < endRound; i++) {
+  const container = document.getElementById('reveal-cards');
+  container.innerHTML = '';
+  for(let i=pendingRevealFrom-1; i<currentRound; i++){
     const r = roundData[i];
-    const delta = Math.abs(r.decision_value - r.true_value);
-    let deltaClass = 'delta-good';
-    if (delta > 15) deltaClass = 'delta-bad';
-    else if (delta > 5) deltaClass = 'delta-mid';
-
     const card = document.createElement('div');
-    card.className = 'reveal-card';
+    card.className='reveal-card';
+    const delta = Math.abs(r.decision_value - r.true_value);
+    if(delta<r.true_value*0.05) card.classList.add('accurate');
+    else if(delta<r.true_value*0.15) card.classList.add('close');
+    else card.classList.add('off');
     card.innerHTML = `
       <span class="reveal-round">Round ${r.round_number}</span>
       <div class="reveal-numbers">
-        <div class="reveal-num">
-          <div class="reveal-num-label">Your</div>
-          <div class="reveal-num-val">${r.decision_value.toFixed(1)}</div>
-        </div>
-        <div class="reveal-num">
-          <div class="reveal-num-label">Truth</div>
-          <div class="reveal-num-val">${r.true_value.toFixed(1)}</div>
-        </div>
-        <div class="reveal-delta ${deltaClass}">${delta.toFixed(1)}</div>
+        <div class="reveal-num"><div class="reveal-num-label">Your</div><div class="reveal-num-val">${r.decision_value}</div></div>
+        <div class="reveal-num"><div class="reveal-num-label">Truth</div><div class="reveal-num-val">${r.true_value}</div></div>
+        <div class="reveal-delta ${delta<r.true_value*0.05?'delta-good':delta<r.true_value*0.15?'delta-mid':'delta-bad'}">${delta.toFixed(1)}</div>
       </div>
     `;
-    cardsDiv.appendChild(card);
+    container.appendChild(card);
   }
-
-  const eyebrow = document.getElementById('reveal-eyebrow');
-  eyebrow.textContent = `Rounds ${pendingRevealFrom}–${endRound} results`;
+  pendingRevealFrom = currentRound + 1;
 }
 
-function continueAfterReveal() {
-  if (currentRound < TOTAL_ROUNDS) {
-    currentRound++;
-    loadTask();
+function continueAfterReveal(){
+  if(currentRound<TOTAL_ROUNDS){
+    currentRound++; loadTask();
   } else {
     show('screen-analysis');
+    loadAnalysis();
   }
 }
+
+function loadAnalysis(){
+  // ... populate metrics, ABI, CSS, insights ...
+}
+
 </script>
 </body>
 </html>
