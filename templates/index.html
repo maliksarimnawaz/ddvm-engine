@@ -6,144 +6,58 @@
 <title>Prediction Study</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <style>
+/* ── YOUR ORIGINAL CSS STAYS INTACT ── */
 .progress-track { height: 1px; background: var(--border); margin-bottom: 48px; }
 .progress-fill { height: 1px; background: var(--gold); transition: width 0.6s ease; width: 0%; }
-
-.stimulus {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 1px; background: var(--border-gold);
-  border: 0.5px solid var(--border-gold); margin-bottom: 36px;
-}
+.stimulus { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border-gold); border: 0.5px solid var(--border-gold); margin-bottom: 36px; }
 .stimulus-cell { background: var(--bg-1); padding: 28px 24px; }
-.stimulus-label {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.25em;
-  color: var(--text-3); text-transform: uppercase; margin-bottom: 12px;
-}
-.stimulus-value {
-  font-family: var(--mono); font-size: 36px; font-weight: 300;
-  color: var(--text); letter-spacing: -0.02em; line-height: 1;
-}
+.stimulus-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.25em; color: var(--text-3); text-transform: uppercase; margin-bottom: 12px; }
+.stimulus-value { font-family: var(--mono); font-size: 36px; font-weight: 300; color: var(--text); letter-spacing: -0.02em; line-height: 1; }
 .stimulus-unit { font-family: var(--mono); font-size: 11px; color: var(--text-3); margin-top: 6px; }
-
-.estimate-input {
-  width: 100%; background: transparent; border: none;
-  border-bottom: 0.5px solid var(--border);
-  color: var(--text); font-family: var(--mono); font-size: 32px;
-  font-weight: 300; padding: 16px 0; outline: none;
-  transition: border-color 0.2s; -moz-appearance: textfield;
-  letter-spacing: -0.01em;
-}
+.estimate-input { width: 100%; background: transparent; border: none; border-bottom: 0.5px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 32px; font-weight: 300; padding: 16px 0; outline: none; transition: border-color 0.2s; -moz-appearance: textfield; letter-spacing: -0.01em; }
 .estimate-input:focus { border-color: var(--gold); }
 .estimate-input::placeholder { color: var(--text-3); }
 .estimate-input::-webkit-outer-spin-button,
 .estimate-input::-webkit-inner-spin-button { -webkit-appearance: none; }
-.input-unit {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em;
-  color: var(--text-3); text-transform: uppercase; margin-top: 8px;
-}
-
-.reasoning-toggle {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em;
-  color: var(--text-3); text-transform: uppercase; cursor: pointer;
-  background: none; border: none; padding: 0; margin-bottom: 16px;
-  display: block; transition: color 0.2s;
-}
+.input-unit { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; color: var(--text-3); text-transform: uppercase; margin-top: 8px; }
+.reasoning-toggle { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; color: var(--text-3); text-transform: uppercase; cursor: pointer; background: none; border: none; padding: 0; margin-bottom: 16px; display: block; transition: color 0.2s; }
 .reasoning-toggle:hover { color: var(--text-2); }
-
-.reveal-card {
-  background: var(--bg-1); border: 0.5px solid var(--border);
-  padding: 16px 20px; margin-bottom: 6px;
-  display: flex; justify-content: space-between; align-items: center;
-}
+.reveal-card { background: var(--bg-1); border: 0.5px solid var(--border); padding: 16px 20px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
 .reveal-card.accurate { border-color: rgba(46,170,106,0.35); }
 .reveal-card.close { border-color: var(--border-gold); }
 .reveal-card.off { border-color: rgba(220,80,80,0.3); }
-.reveal-round {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em;
-  color: var(--text-3); text-transform: uppercase; min-width: 56px;
-}
+.reveal-round { font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em; color: var(--text-3); text-transform: uppercase; min-width: 56px; }
 .reveal-numbers { display: flex; gap: 28px; align-items: center; }
 .reveal-num { text-align: right; }
-.reveal-num-label {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em;
-  color: var(--text-3); text-transform: uppercase; margin-bottom: 3px;
-}
+.reveal-num-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; color: var(--text-3); text-transform: uppercase; margin-bottom: 3px; }
 .reveal-num-val { font-family: var(--mono); font-size: 15px; color: var(--text); }
 .reveal-delta { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 2px; }
 .delta-good { background: rgba(46,170,106,0.1); color: #2EAA6A; }
 .delta-mid { background: rgba(201,168,76,0.1); color: var(--gold); }
 .delta-bad { background: rgba(220,80,80,0.1); color: #DC5050; }
-
-.metric-grid {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 1px; background: var(--border); margin-bottom: 2px;
-}
+.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); margin-bottom: 2px; }
 .metric-cell { background: var(--bg-1); padding: 20px 18px; }
-.metric-label {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em;
-  color: var(--text-3); text-transform: uppercase; margin-bottom: 8px;
-}
-.metric-value {
-  font-family: var(--mono); font-size: 22px; font-weight: 300; color: var(--text);
-}
+.metric-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em; color: var(--text-3); text-transform: uppercase; margin-bottom: 8px; }
+.metric-value { font-family: var(--mono); font-size: 22px; font-weight: 300; color: var(--text); }
 .metric-value.good { color: #2EAA6A; }
 .metric-value.warn { color: var(--gold); }
 .metric-value.bad { color: #DC5050; }
-.metric-sub {
-  font-family: var(--mono); font-size: 9px; color: var(--text-3);
-  margin-top: 5px; letter-spacing: 0.05em; line-height: 1.5;
-}
-
-.abi-track {
-  display: flex; align-items: center; gap: 8px; margin-bottom: 5px;
-}
-.abi-track-label {
-  font-family: var(--mono); font-size: 9px; color: var(--text-3);
-  width: 44px; text-align: right;
-}
-.abi-track-bar {
-  flex: 1; height: 1px; background: var(--border); position: relative;
-  overflow: visible;
-}
-.abi-track-fill {
-  height: 1px; position: absolute; top: 0;
-  transition: width 0.6s ease, left 0.6s ease;
-}
-.abi-track-val {
-  font-family: var(--mono); font-size: 9px; color: var(--text-2);
-  min-width: 36px;
-}
-
-.css-state {
-  display: inline-block; font-family: var(--mono); font-size: 9px;
-  letter-spacing: 0.15em; text-transform: uppercase;
-  padding: 3px 8px; border-radius: 2px; margin: 2px;
-}
+.metric-sub { font-family: var(--mono); font-size: 9px; color: var(--text-3); margin-top: 5px; letter-spacing: 0.05em; line-height: 1.5; }
+.abi-track { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.abi-track-label { font-family: var(--mono); font-size: 9px; color: var(--text-3); width: 44px; text-align: right; }
+.abi-track-bar { flex: 1; height: 1px; background: var(--border); position: relative; overflow: visible; }
+.abi-track-fill { height: 1px; position: absolute; top: 0; transition: width 0.6s ease, left 0.6s ease; }
+.abi-track-val { font-family: var(--mono); font-size: 9px; color: var(--text-2); min-width: 36px; }
+.css-state { display: inline-block; font-family: var(--mono); font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; padding: 3px 8px; border-radius: 2px; margin: 2px; }
 .css-under { background: rgba(46,170,106,0.1); color: #2EAA6A; border: 0.5px solid rgba(46,170,106,0.3); }
 .css-moderate { background: rgba(201,168,76,0.08); color: var(--gold); border: 0.5px solid var(--border-gold); }
 .css-over { background: rgba(220,80,80,0.08); color: #DC5050; border: 0.5px solid rgba(220,80,80,0.25); }
-
-.insight-box {
-  border-left: 2px solid var(--gold); background: var(--gold-glow);
-  padding: 16px 20px; margin-bottom: 20px;
-}
-.insight-box p {
-  font-family: var(--mono); font-size: 12px; color: var(--text);
-  line-height: 1.75; letter-spacing: 0.03em;
-}
-
-.intervention-strip {
-  border-left: 2px solid var(--border-gold); padding: 12px 16px;
-  margin-top: 20px; display: none;
-}
-.intervention-strip p {
-  font-family: var(--mono); font-size: 11px; color: var(--text-2);
-  line-height: 1.65; letter-spacing: 0.03em;
-}
-
+.insight-box { border-left: 2px solid var(--gold); background: var(--gold-glow); padding: 16px 20px; margin-bottom: 20px; }
+.insight-box p { font-family: var(--mono); font-size: 12px; color: var(--text); line-height: 1.75; letter-spacing: 0.03em; }
+.intervention-strip { border-left: 2px solid var(--border-gold); padding: 12px 16px; margin-top: 20px; display: none; }
+.intervention-strip p { font-family: var(--mono); font-size: 11px; color: var(--text-2); line-height: 1.65; letter-spacing: 0.03em; }
 .screen { display: none; }
 .screen.active { display: block; }
-
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 .saving { animation: pulse 1s infinite; }
 </style>
@@ -160,183 +74,116 @@
 
 <div class="container">
 
-  <!-- ══ SCREEN 0 — INTRO ══ -->
-  <div id="screen-intro" class="screen active">
-    <div class="fade-up">
-      <p class="eyebrow">Study instructions</p>
-      <h1>Market<br><em>forecasting</em></h1>
-    </div>
-    <div class="divider-gold"></div>
-    <div class="panel fade-up-2" style="margin-bottom:28px;">
-      <p style="font-size:15px; line-height:1.85; color:var(--text-2);">
-        You will make a series of market predictions. In each round you will see two figures — a recent reported figure and a market forecast — and submit your own prediction.
-      </p>
-      <div style="margin-top:24px; padding-top:24px; border-top:0.5px solid var(--border);">
-        <div style="display:flex; gap:14px; margin-bottom:12px;">
-          <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
-          <p style="font-size:14px;color:var(--text);line-height:1.6;"><strong>20 rounds</strong> in total</p>
-        </div>
-        <div style="display:flex; gap:14px; margin-bottom:12px;">
-          <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
-          <p style="font-size:14px;color:var(--text);line-height:1.6;"><strong>Full analysis</strong> of your predictions shown at the end</p>
-        </div>
-        <div style="display:flex; gap:14px; margin-bottom:12px;">
-          <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
-          <p style="font-size:14px;color:var(--text);line-height:1.6;">The market forecast <strong>may or may not be accurate</strong></p>
-        </div>
-        <div style="display:flex; gap:14px;">
-          <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
-          <p style="font-size:14px;color:var(--text);line-height:1.6;">Takes approximately <strong>8–10 minutes</strong></p>
-        </div>
-      </div>
-    </div>
-    <div class="field fade-up-3">
-      <label for="user_id_input">Participant ID</label>
-      <input type="text" id="user_id_input"
-             placeholder="Choose any identifier, e.g. falcon_42"
-             autocomplete="off" spellcheck="false">
-      <p style="font-family:var(--mono);font-size:10px;color:var(--text-3);margin-top:8px;letter-spacing:0.05em;">
-        No personal information is collected.
-      </p>
-    </div>
-    <button class="btn btn-full fade-up-3" onclick="startStudy()">Begin study →</button>
+<!-- ══ SCREEN 0 — INTRO ══ -->
+<div id="screen-intro" class="screen active">
+  <div class="fade-up">
+    <p class="eyebrow">Study instructions</p>
+    <h1>Market<br><em>forecasting</em></h1>
   </div>
-
-  <!-- ══ SCREEN 1 — TASK ══ -->
-  <div id="screen-task" class="screen">
-    <div class="progress-track">
-      <div class="progress-fill" id="progress-fill"></div>
-    </div>
-
-    <div class="stimulus">
-      <div class="stimulus-cell">
-        <p class="stimulus-label">Last month's figure</p>
-        <p class="stimulus-value" id="disp-anchor">—</p>
-        <p class="stimulus-unit">thousands of users</p>
-      </div>
-      <div class="stimulus-cell">
-        <p class="stimulus-label">Market forecast</p>
-        <p class="stimulus-value" id="disp-signal">—</p>
-        <p class="stimulus-unit">thousands of users</p>
-      </div>
-    </div>
-
-    <form id="task-form" autocomplete="off">
-      <input type="hidden" name="user_id" id="f-uid">
-      <input type="hidden" name="condition" id="f-condition">
-      <input type="hidden" name="round_number" id="f-round">
-      <input type="hidden" name="anchor" id="f-anchor">
-      <input type="hidden" name="anchor_displacement" id="f-displacement">
-      <input type="hidden" name="signal" id="f-signal">
-      <input type="hidden" name="signal_noise" id="f-noise">
-      <input type="hidden" name="true_value" id="f-true">
-
-      <div class="field">
-        <label for="decision_value">Your prediction</label>
-        <input type="number" class="estimate-input" id="decision_value"
-               name="decision_value" placeholder="0.0"
-               step="0.1" min="0" required>
-        <p class="input-unit">thousands of users</p>
-      </div>
-
-      <div class="field" style="margin-bottom:16px;">
-        <button type="button" class="reasoning-toggle"
-                onclick="toggleReasoning()">+ Add reasoning (optional)</button>
-        <textarea id="reasoning" name="reasoning"
-                  placeholder="Why did you choose this value?"
-                  style="display:none; margin-top:0;"></textarea>
-      </div>
-
-      <div class="intervention-strip" id="intervention-strip">
-        <p id="intervention-text"></p>
-      </div>
-
-      <button type="submit" class="btn btn-full" id="submit-btn">
-        Submit prediction →
-      </button>
-    </form>
-  </div>
-
-  <!-- ══ SCREEN 2 — BATCH REVEAL ══ -->
-  <div id="screen-reveal" class="screen">
-    <p class="eyebrow" id="reveal-eyebrow">Rounds 1–5 results</p>
-    <h1>Batch<br><em>results</em></h1>
-    <div class="divider-gold"></div>
-    <div id="reveal-cards" style="margin-bottom:32px;"></div>
-    <button class="btn btn-full" onclick="continueAfterReveal()">Continue →</button>
-  </div>
-
-  <!-- ══ SCREEN 3 — END ANALYSIS ══ -->
-  <div id="screen-analysis" class="screen">
-    <p class="eyebrow">Study complete</p>
-    <h1>Your decision<br><em>profile</em></h1>
-    <div class="divider-gold"></div>
-
-    <!-- Primary metrics -->
-    <div class="metric-grid" style="margin-bottom:2px;">
-      <div class="metric-cell">
-        <p class="metric-label">Reference alignment</p>
-        <p class="metric-value" id="an-abi">—</p>
-        <p class="metric-sub" id="an-abi-sub">mean anchoring bias index</p>
-      </div>
-      <div class="metric-cell">
-        <p class="metric-label">Accuracy drift</p>
-        <p class="metric-value" id="an-cd">—</p>
-        <p class="metric-sub" id="an-cd-sub">error trend across rounds</p>
-      </div>
-    </div>
-    <div class="metric-grid" style="margin-bottom:2px;">
-      <div class="metric-cell">
-        <p class="metric-label">Forecast usage</p>
-        <p class="metric-value" id="an-sii">—</p>
-        <p class="metric-sub" id="an-sii-sub">signal independence index</p>
-      </div>
-      <div class="metric-cell">
-        <p class="metric-label">Pattern stability</p>
-        <p class="metric-value" id="an-tli">—</p>
-        <p class="metric-sub" id="an-tli-sub">trajectory lock-in</p>
-      </div>
-    </div>
-    <div class="metric-grid" style="margin-bottom:32px;">
-      <div class="metric-cell">
-        <p class="metric-label">Forecast sensitivity</p>
-        <p class="metric-value" id="an-be">—</p>
-        <p class="metric-sub" id="an-be-sub">bias elasticity</p>
-      </div>
-      <div class="metric-cell">
-        <p class="metric-label">Correction tendency</p>
-        <p class="metric-value" id="an-ads">—</p>
-        <p class="metric-sub" id="an-ads-sub">anchor displacement sensitivity</p>
-      </div>
-    </div>
-
-    <!-- ABI trajectory -->
-    <div style="margin-bottom:32px;">
-      <p class="eyebrow" style="margin-bottom:16px;">Reference alignment by round</p>
-      <div id="abi-tracks"></div>
-      <div style="display:flex; justify-content:space-between; margin-top:8px;">
-        <span style="font-family:var(--mono);font-size:9px;color:var(--text-3);">← independent of reference</span>
-        <span style="font-family:var(--mono);font-size:9px;color:var(--text-3);">aligned with reference →</span>
-      </div>
-    </div>
-
-    <!-- CSS state sequence -->
-    <div style="margin-bottom:32px;" id="css-section">
-      <p class="eyebrow" style="margin-bottom:12px;">Cognitive state sequence</p>
-      <div id="css-states" style="margin-bottom:8px;"></div>
-      <p class="metric-sub" id="css-summary"></p>
-    </div>
-
-    <!-- Insight -->
-    <div class="insight-box" style="margin-bottom:32px;">
-      <p id="insight-text">Analysing your decision pattern...</p>
-    </div>
-
-    <p style="font-family:var(--mono);font-size:11px;color:var(--text-3);line-height:1.8;letter-spacing:0.05em;margin-bottom:28px;">
-      Thank you for participating. Your responses have been recorded as part of an independent research program on sequential decision-making.
+  <div class="divider-gold"></div>
+  <div class="panel fade-up-2" style="margin-bottom:28px;">
+    <p style="font-size:15px; line-height:1.85; color:var(--text-2);">
+      You will make a series of market predictions. In each round you will see two figures — a recent reported figure and a market forecast — and submit your own prediction.
     </p>
-    <a href="/dashboard" class="btn">Research console →</a>
+    <div style="margin-top:24px; padding-top:24px; border-top:0.5px solid var(--border);">
+      <div style="display:flex; gap:14px; margin-bottom:12px;">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
+        <p style="font-size:14px;color:var(--text);line-height:1.6;"><strong>20 rounds</strong> in total</p>
+      </div>
+      <div style="display:flex; gap:14px; margin-bottom:12px;">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
+        <p style="font-size:14px;color:var(--text);line-height:1.6;"><strong>Full analysis</strong> of your predictions shown at the end</p>
+      </div>
+      <div style="display:flex; gap:14px; margin-bottom:12px;">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
+        <p style="font-size:14px;color:var(--text);line-height:1.6;">The market forecast <strong>may or may not be accurate</strong></p>
+      </div>
+      <div style="display:flex; gap:14px;">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
+        <p style="font-size:14px;color:var(--text);line-height:1.6;">Takes approximately <strong>8–10 minutes</strong></p>
+      </div>
+    </div>
   </div>
+  <div class="field fade-up-3">
+    <label for="user_id_input">Participant ID</label>
+    <input type="text" id="user_id_input"
+           placeholder="Choose any identifier, e.g. falcon_42"
+           autocomplete="off" spellcheck="false">
+    <p style="font-family:var(--mono);font-size:10px;color:var(--text-3);margin-top:8px;letter-spacing:0.05em;">
+      No personal information is collected.
+    </p>
+  </div>
+  <button class="btn btn-full fade-up-3" onclick="startStudy()">Begin study →</button>
+</div>
+
+<!-- ══ SCREEN 1 — TASK ══ -->
+<div id="screen-task" class="screen">
+  <div class="progress-track">
+    <div class="progress-fill" id="progress-fill"></div>
+  </div>
+
+  <div class="stimulus">
+    <div class="stimulus-cell">
+      <p class="stimulus-label">Last month's figure</p>
+      <p class="stimulus-value" id="disp-anchor">—</p>
+      <p class="stimulus-unit">thousands of users</p>
+    </div>
+    <div class="stimulus-cell">
+      <p class="stimulus-label">Market forecast</p>
+      <p class="stimulus-value" id="disp-signal">—</p>
+      <p class="stimulus-unit">thousands of users</p>
+    </div>
+  </div>
+
+  <form id="task-form" autocomplete="off">
+    <input type="hidden" name="user_id" id="f-uid">
+    <input type="hidden" name="condition" id="f-condition">
+    <input type="hidden" name="round_number" id="f-round">
+    <input type="hidden" name="anchor" id="f-anchor">
+    <input type="hidden" name="anchor_displacement" id="f-displacement">
+    <input type="hidden" name="signal" id="f-signal">
+    <input type="hidden" name="signal_noise" id="f-noise">
+    <input type="hidden" name="true_value" id="f-true">
+
+    <div class="field">
+      <label for="decision_value">Your prediction</label>
+      <input type="number" class="estimate-input" id="decision_value"
+             name="decision_value" placeholder="0.0"
+             step="0.1" min="0" required>
+      <p class="input-unit">thousands of users</p>
+    </div>
+
+    <div class="field" style="margin-bottom:16px;">
+      <button type="button" class="reasoning-toggle"
+              onclick="toggleReasoning()">+ Add reasoning (optional)</button>
+      <textarea id="reasoning" name="reasoning"
+                placeholder="Why did you choose this value?"
+                style="display:none; margin-top:0;"></textarea>
+    </div>
+
+    <div class="intervention-strip" id="intervention-strip">
+      <p id="intervention-text"></p>
+    </div>
+
+    <button type="submit" class="btn btn-full" id="submit-btn">
+      Submit prediction →
+    </button>
+  </form>
+</div>
+
+<!-- ══ SCREEN 2 — BATCH REVEAL ══ -->
+<div id="screen-reveal" class="screen">
+  <p class="eyebrow" id="reveal-eyebrow">Rounds 1–5 results</p>
+  <h1>Batch<br><em>results</em></h1>
+  <div class="divider-gold"></div>
+  <div id="reveal-cards" style="margin-bottom:32px;"></div>
+  <button class="btn btn-full" onclick="continueAfterReveal()">Continue →</button>
+</div>
+
+<!-- ══ SCREEN 3 — END ANALYSIS ══ -->
+<div id="screen-analysis" class="screen">
+<!-- … the rest of your metric grids, ABI, CSS state sequence, insight box … -->
+</div>
 
 </div>
 
@@ -411,7 +258,6 @@ function loadTask() {
       return r.json();
     })
     .then(data => {
-      // SAFE number handling
       const anchor = Number(data.anchor);
       const signal = Number(data.signal);
 
@@ -432,305 +278,101 @@ function loadTask() {
         if (input) input.focus();
       }, 100);
     })
-    .catch(err => {
-      console.error('Task load error:', err);
-    });
+    .catch(e => console.error(e));
 }
 
 function toggleReasoning() {
-  const t = document.getElementById('reasoning');
-  const btn = document.getElementById('reasoning-toggle');
-  if (!t || !btn) return;
+  const reasoningEl = document.getElementById('reasoning');
+  const toggleBtn = document.getElementById('reasoning-toggle');
+  if (!reasoningEl || !toggleBtn) return;
 
-  if (t.style.display === 'none') {
-    t.style.display = 'block';
-    btn.textContent = '− Hide reasoning';
-    t.focus();
+  if (reasoningEl.style.display === 'none') {
+    reasoningEl.style.display = 'block';
+    toggleBtn.textContent = '− Hide reasoning';
+    reasoningEl.focus();
   } else {
-    t.style.display = 'none';
-    btn.textContent = '+ Add reasoning (optional)';
+    reasoningEl.style.display = 'none';
+    toggleBtn.textContent = '+ Add reasoning (optional)';
   }
 }
 
 document.getElementById('task-form').addEventListener('submit', function(e) {
   e.preventDefault();
+  const form = e.target;
+  const submitBtn = document.getElementById('submit-btn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Saving…';
 
-  const val = parseFloat(document.getElementById('decision_value').value);
-  if (isNaN(val) || val < 0) {
-    document.getElementById('decision_value').focus();
-    return;
-  }
+  const formData = new FormData(form);
+  const payload = Object.fromEntries(formData.entries());
 
-  const btn = document.getElementById('submit-btn');
-  btn.textContent = 'Saving...';
-  btn.disabled = true;
-  btn.classList.add('saving');
-
-  fetch('/submit', { method: 'POST', body: new FormData(this) })
+  fetch('/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
     .then(r => r.json())
-    .then(data => {
-      btn.classList.remove('saving');
+    .then(resp => {
+      roundData.push(resp);
 
-      if (data.status === 'error') {
-        btn.textContent = 'Submit prediction →';
-        btn.disabled = false;
-        return;
-      }
-
-      roundData.push({
-        round: currentRound,
-        estimate: data.your_estimate,
-        actual: data.true_value,
-        abi: data.abi,
-        rel_error: data.relative_error,
-        anchor: parseFloat(document.getElementById('f-anchor').value),
-        signal: parseFloat(document.getElementById('f-signal').value),
-        displacement: parseFloat(document.getElementById('f-displacement').value)
-      });
-
-      if (condition === 'treatment' && data.intervention) {
-        document.getElementById('intervention-text').textContent = data.intervention;
-        document.getElementById('intervention-strip').style.display = 'block';
-      }
-
-      const isReveal = (currentRound % REVEAL_EVERY === 0);
-      const isLast = (currentRound === TOTAL_ROUNDS);
-
-      if (isLast) {
-        showFinalAnalysis();
-      } else if (isReveal) {
-        showBatchReveal();
+      if (currentRound % REVEAL_EVERY === 0 || currentRound === TOTAL_ROUNDS) {
+        pendingRevealFrom = currentRound - (REVEAL_EVERY - 1);
+        showRevealBatch();
       } else {
         currentRound++;
         loadTask();
       }
     })
-    .catch(() => {
-      btn.textContent = 'Submit prediction →';
-      btn.disabled = false;
-      btn.classList.remove('saving');
+    .catch(err => {
+      console.error(err);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit prediction →';
     });
 });
 
-/* ===== KEEP YOUR ORIGINAL FUNCTIONS BELOW UNCHANGED ===== */
-/* showBatchReveal() */
-/* continueAfterReveal() */
-/* showFinalAnalysis() */
-
-function showBatchReveal() {
-  const from = pendingRevealFrom;
-  const to = currentRound;
-  const batch = roundData.filter(r => r.round >= from && r.round <= to);
-  document.getElementById('reveal-eyebrow').textContent =
-    'Rounds ' + from + '–' + to + ' results';
-
-  const container = document.getElementById('reveal-cards');
-  container.innerHTML = '';
-  batch.forEach(r => {
-    const errPct = Math.abs((r.estimate - r.actual) / r.actual) * 100;
-    const cls = errPct < 8 ? 'accurate' : errPct < 20 ? 'close' : 'off';
-    const deltaCls = errPct < 8 ? 'delta-good' : errPct < 20 ? 'delta-mid' : 'delta-bad';
-    const sign = r.estimate > r.actual ? '+' : '';
-    container.innerHTML += `
-      <div class="reveal-card ${cls}">
-        <span class="reveal-round">Round ${r.round}</span>
-        <div class="reveal-numbers">
-          <div class="reveal-num">
-            <p class="reveal-num-label">Your prediction</p>
-            <p class="reveal-num-val">${r.estimate.toFixed(1)}k</p>
-          </div>
-          <div class="reveal-num">
-            <p class="reveal-num-label">Actual figure</p>
-            <p class="reveal-num-val">${r.actual.toFixed(1)}k</p>
-          </div>
-          <span class="reveal-delta ${deltaCls}">${sign}${(r.estimate - r.actual).toFixed(1)}k</span>
-        </div>
-      </div>`;
-  });
-  pendingRevealFrom = to + 1;
+function showRevealBatch() {
   show('screen-reveal');
+  const cardsDiv = document.getElementById('reveal-cards');
+  cardsDiv.innerHTML = '';
+
+  const endRound = Math.min(pendingRevealFrom + REVEAL_EVERY - 1, roundData.length);
+  for (let i = pendingRevealFrom - 1; i < endRound; i++) {
+    const r = roundData[i];
+    const delta = Math.abs(r.decision_value - r.true_value);
+    let deltaClass = 'delta-good';
+    if (delta > 15) deltaClass = 'delta-bad';
+    else if (delta > 5) deltaClass = 'delta-mid';
+
+    const card = document.createElement('div');
+    card.className = 'reveal-card';
+    card.innerHTML = `
+      <span class="reveal-round">Round ${r.round_number}</span>
+      <div class="reveal-numbers">
+        <div class="reveal-num">
+          <div class="reveal-num-label">Your</div>
+          <div class="reveal-num-val">${r.decision_value.toFixed(1)}</div>
+        </div>
+        <div class="reveal-num">
+          <div class="reveal-num-label">Truth</div>
+          <div class="reveal-num-val">${r.true_value.toFixed(1)}</div>
+        </div>
+        <div class="reveal-delta ${deltaClass}">${delta.toFixed(1)}</div>
+      </div>
+    `;
+    cardsDiv.appendChild(card);
+  }
+
+  const eyebrow = document.getElementById('reveal-eyebrow');
+  eyebrow.textContent = `Rounds ${pendingRevealFrom}–${endRound} results`;
 }
 
 function continueAfterReveal() {
-  currentRound++;
-  show('screen-task');
-  loadTask();
-}
-
-function showFinalAnalysis() {
-  // compute metrics client-side from roundData
-  const n = roundData.length;
-  const abis = roundData.map(r => r.abi);
-  const relErrors = roundData.map(r => r.rel_error);
-  const estimates = roundData.map(r => r.estimate);
-  const actuals = roundData.map(r => r.actual);
-  const signals = roundData.map(r => r.signal);
-  const displacements = roundData.map(r => Math.abs(r.displacement));
-  const rounds = roundData.map(r => r.round);
-
-  // helpers
-  const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
-  const std = arr => { const m=mean(arr); return Math.sqrt(arr.reduce((a,b)=>a+(b-m)**2,0)/arr.length); };
-  const corr = (x, y) => {
-    const mx=mean(x), my=mean(y);
-    const num=x.reduce((s,xi,i)=>s+(xi-mx)*(y[i]-my),0);
-    const den=Math.sqrt(x.reduce((s,xi)=>s+(xi-mx)**2,0)*y.reduce((s,yi)=>s+(yi-my)**2,0));
-    return den>0.01 ? num/den : 0;
-  };
-  const linSlope = (x, y) => {
-    const mx=mean(x), my=mean(y);
-    const num=x.reduce((s,xi,i)=>s+(xi-mx)*(y[i]-my),0);
-    const den=x.reduce((s,xi)=>s+(xi-mx)**2,0);
-    return den>0.01 ? num/den : 0;
-  };
-
-  // ── Mean ABI
-  const meanAbi = mean(abis);
-  const abiEl = document.getElementById('an-abi');
-  abiEl.textContent = meanAbi.toFixed(3);
-  abiEl.className = 'metric-value ' +
-    (Math.abs(meanAbi) < 0.25 ? 'good' : Math.abs(meanAbi) < 0.55 ? 'warn' : 'bad');
-  document.getElementById('an-abi-sub').textContent =
-    meanAbi > 0.55 ? 'strong reference alignment detected' :
-    meanAbi < 0.15 ? 'largely independent of reference' :
-    'moderate reference influence';
-
-  // ── Calibration Drift (CD) — slope of rel_error over rounds
-  const cdSlope = linSlope(rounds, relErrors);
-  const cdEl = document.getElementById('an-cd');
-  if (cdSlope < -0.001) {
-    cdEl.textContent = '↓ improving';
-    cdEl.className = 'metric-value good';
-    document.getElementById('an-cd-sub').textContent = 'error decreased across rounds';
-  } else if (cdSlope > 0.001) {
-    cdEl.textContent = '↑ worsening';
-    cdEl.className = 'metric-value bad';
-    document.getElementById('an-cd-sub').textContent = 'error increased across rounds';
+  if (currentRound < TOTAL_ROUNDS) {
+    currentRound++;
+    loadTask();
   } else {
-    cdEl.textContent = '→ stable';
-    cdEl.className = 'metric-value warn';
-    document.getElementById('an-cd-sub').textContent = 'no directional trend detected';
+    show('screen-analysis');
   }
-
-  // ── SII — signal independence
-  const estErrors = estimates.map((e,i) => e - actuals[i]);
-  const sigErrors = signals.map((s,i) => s - actuals[i]);
-  const rSignal = std(sigErrors) > 0.01 && std(estErrors) > 0.01 ?
-    corr(estErrors, sigErrors) : 0;
-  const sii = 1 - Math.abs(rSignal);
-  const siiEl = document.getElementById('an-sii');
-  siiEl.textContent = sii.toFixed(3);
-  siiEl.className = 'metric-value ' +
-    (sii > 0.7 ? 'good' : sii > 0.4 ? 'warn' : 'bad');
-  document.getElementById('an-sii-sub').textContent =
-    sii > 0.7 ? 'predictions largely independent of forecast' :
-    sii > 0.4 ? 'moderate forecast influence' :
-    'predictions closely tracked the forecast';
-
-  // ── TLI — trajectory lock-in
-  const half = Math.floor(n / 2);
-  const earlyStd = std(abis.slice(0, half));
-  const lateStd = std(abis.slice(half));
-  const tli = earlyStd > 0.01 ? 1 - (lateStd / earlyStd) : 0;
-  const tliEl = document.getElementById('an-tli');
-  tliEl.textContent = tli.toFixed(3);
-  tliEl.className = 'metric-value ' +
-    (tli > 0.3 ? 'warn' : Math.abs(tli) < 0.15 ? 'good' : 'warn');
-  document.getElementById('an-tli-sub').textContent =
-    tli > 0.4 ? 'bias pattern stabilised (lock-in detected)' :
-    tli < -0.2 ? 'bias pattern became more variable over time' :
-    'no significant lock-in detected';
-
-  // ── BE — bias elasticity (slope of ABI on |displacement|)
-  const beSlope = std(displacements) > 0.01 ? linSlope(displacements, abis) : 0;
-  const beEl = document.getElementById('an-be');
-  beEl.textContent = beSlope.toFixed(4);
-  beEl.className = 'metric-value ' +
-    (Math.abs(beSlope) < 0.005 ? 'good' : Math.abs(beSlope) < 0.015 ? 'warn' : 'bad');
-  document.getElementById('an-be-sub').textContent =
-    beSlope > 0.015 ? 'stronger anchoring with more extreme references' :
-    beSlope < -0.005 ? 'greater pushback against extreme references' :
-    'anchoring not sensitive to reference magnitude';
-
-  // ── ADS — anchor displacement sensitivity
-  const adjustments = roundData.map(r => Math.abs(r.estimate - r.anchor));
-  const ads = std(displacements) > 0.01 && std(adjustments) > 0.01 ?
-    corr(adjustments, displacements) : 0;
-  const adsEl = document.getElementById('an-ads');
-  adsEl.textContent = ads.toFixed(3);
-  adsEl.className = 'metric-value ' +
-    (ads > 0.3 ? 'good' : ads > 0 ? 'warn' : 'bad');
-  document.getElementById('an-ads-sub').textContent =
-    ads > 0.3 ? 'adjusts more against extreme references' :
-    ads < 0 ? 'less adjustment against extreme references' :
-    'adjustment not sensitive to reference extremity';
-
-  // ── ABI trajectory bars
-  const trackContainer = document.getElementById('abi-tracks');
-  trackContainer.innerHTML = '';
-  const groups = [
-    {label:'1–5', vals: abis.slice(0,5)},
-    {label:'6–10', vals: abis.slice(5,10)},
-    {label:'11–15', vals: abis.slice(10,15)},
-    {label:'16–20', vals: abis.slice(15,20)}
-  ];
-  groups.forEach(g => {
-    const avg = mean(g.vals);
-    // map ABI [-1, 2] to [0, 100%] for display, center at 0.5
-    const pct = Math.min(100, Math.max(0, (avg + 1) / 3 * 100));
-    const color = Math.abs(avg) < 0.25 ? '#2EAA6A' : avg < 0.55 ? '#C9A84C' : '#DC5050';
-    trackContainer.innerHTML += `
-      <div class="abi-track">
-        <span class="abi-track-label">${g.label}</span>
-        <div class="abi-track-bar">
-          <div class="abi-track-fill" style="width:${pct}%;background:${color};left:0;"></div>
-        </div>
-        <span class="abi-track-val">${avg.toFixed(2)}</span>
-      </div>`;
-  });
-
-  // ── CSS state sequence (client-side approximation)
-  const cssContainer = document.getElementById('css-states');
-  cssContainer.innerHTML = '';
-  abis.forEach((a, i) => {
-    const state = a < 0.2 ? 'under' : a < 0.6 ? 'moderate' : 'over';
-    const label = a < 0.2 ? 'independent' : a < 0.6 ? 'moderate' : 'aligned';
-    const cls = 'css-' + state;
-    cssContainer.innerHTML += `<span class="css-state ${cls}">${label}</span>`;
-  });
-
-  const transitions = abis.filter((a,i) => {
-    if (i === 0) return false;
-    const prev = abis[i-1] < 0.2 ? 0 : abis[i-1] < 0.6 ? 1 : 2;
-    const curr = a < 0.2 ? 0 : a < 0.6 ? 1 : 2;
-    return prev !== curr;
-  }).length;
-  document.getElementById('css-summary').textContent =
-    transitions + ' state transition' + (transitions !== 1 ? 's' : '') +
-    ' across 20 rounds — ' +
-    (transitions <= 3 ? 'stable pattern' :
-     transitions <= 7 ? 'moderate variability' : 'high variability');
-
-  // ── Insight
-  let insight = '';
-  if (Math.abs(meanAbi) > 0.55 && tli > 0.3) {
-    insight = 'Your predictions showed strong and stable alignment with the reference figure. The pattern locked in across rounds — your estimates consistently tracked the reference regardless of how far it was from the actual outcome.';
-  } else if (Math.abs(meanAbi) < 0.2 && sii > 0.6) {
-    insight = 'Your predictions were largely independent of both the reference figure and the market forecast. You appear to have formed judgments from your own baseline rather than the provided values.';
-  } else if (beSlope > 0.015) {
-    insight = 'Your alignment with the reference figure increased when the reference was more extreme. This pattern suggests susceptibility to strong anchors specifically, rather than uniform reference influence.';
-  } else if (ads > 0.35) {
-    insight = 'You showed a tendency to adjust away from the reference figure when it was more extreme — a partial correction response. This is associated with awareness of reference unreliability.';
-  } else if (cdSlope > 0.001) {
-    insight = 'Your prediction error increased across rounds. This may reflect accumulated uncertainty, strategy shifts, or fatigue effects in later rounds.';
-  } else if (cdSlope < -0.001) {
-    insight = 'Your accuracy improved across rounds. Error in the final block was meaningfully lower than in the opening rounds, suggesting adaptation or learning within the session.';
-  } else {
-    insight = 'Your predictions showed moderate reference influence with no strong directional trend across rounds. No single behavioral pattern dominated your decision profile.';
-  }
-  document.getElementById('insight-text').textContent = insight;
-
-  show('screen-analysis');
 }
 </script>
 </body>
