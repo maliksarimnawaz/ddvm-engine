@@ -3,44 +3,149 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DDVM — Startup Prediction Task</title>
+<title>Prediction Study</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <style>
-.result-panel {
-  background: var(--bg-1);
-  border: 0.5px solid var(--border-gold);
-  border-radius: 2px;
-  padding: 28px 32px;
-  margin-bottom: 28px;
-  display: none;
+.progress-track { height: 1px; background: var(--border); margin-bottom: 48px; }
+.progress-fill { height: 1px; background: var(--gold); transition: width 0.6s ease; width: 0%; }
+
+.stimulus {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 1px; background: var(--border-gold);
+  border: 0.5px solid var(--border-gold); margin-bottom: 36px;
 }
-.result-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
+.stimulus-cell { background: var(--bg-1); padding: 28px 24px; }
+.stimulus-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.25em;
+  color: var(--text-3); text-transform: uppercase; margin-bottom: 12px;
+}
+.stimulus-value {
+  font-family: var(--mono); font-size: 36px; font-weight: 300;
+  color: var(--text); letter-spacing: -0.02em; line-height: 1;
+}
+.stimulus-unit { font-family: var(--mono); font-size: 11px; color: var(--text-3); margin-top: 6px; }
+
+.estimate-input {
+  width: 100%; background: transparent; border: none;
   border-bottom: 0.5px solid var(--border);
+  color: var(--text); font-family: var(--mono); font-size: 32px;
+  font-weight: 300; padding: 16px 0; outline: none;
+  transition: border-color 0.2s; -moz-appearance: textfield;
+  letter-spacing: -0.01em;
 }
-.result-row:last-child { border-bottom: none; }
-.result-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; color: var(--text-3); text-transform: uppercase; }
-.result-value { font-family: var(--mono); font-size: 16px; color: var(--text); }
-.result-value.good { color: #2EAA6A; }
-.result-value.warn { color: var(--gold); }
-.result-value.bad { color: #E55; }
-.intervention-box {
-  border-left: 2px solid var(--gold);
-  background: var(--gold-glow);
-  padding: 14px 20px;
-  margin-top: 20px;
-  display: none;
+.estimate-input:focus { border-color: var(--gold); }
+.estimate-input::placeholder { color: var(--text-3); }
+.estimate-input::-webkit-outer-spin-button,
+.estimate-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.input-unit {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em;
+  color: var(--text-3); text-transform: uppercase; margin-top: 8px;
 }
-.intervention-box p {
-  font-family: var(--mono); font-size: 13px; color: var(--text); line-height: 1.6;
+
+.reasoning-toggle {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em;
+  color: var(--text-3); text-transform: uppercase; cursor: pointer;
+  background: none; border: none; padding: 0; margin-bottom: 16px;
+  display: block; transition: color 0.2s;
 }
-.intervention-label {
+.reasoning-toggle:hover { color: var(--text-2); }
+
+.reveal-card {
+  background: var(--bg-1); border: 0.5px solid var(--border);
+  padding: 16px 20px; margin-bottom: 6px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.reveal-card.accurate { border-color: rgba(46,170,106,0.35); }
+.reveal-card.close { border-color: var(--border-gold); }
+.reveal-card.off { border-color: rgba(220,80,80,0.3); }
+.reveal-round {
   font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em;
-  color: var(--gold); text-transform: uppercase; margin-bottom: 6px;
+  color: var(--text-3); text-transform: uppercase; min-width: 56px;
 }
+.reveal-numbers { display: flex; gap: 28px; align-items: center; }
+.reveal-num { text-align: right; }
+.reveal-num-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em;
+  color: var(--text-3); text-transform: uppercase; margin-bottom: 3px;
+}
+.reveal-num-val { font-family: var(--mono); font-size: 15px; color: var(--text); }
+.reveal-delta { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 2px; }
+.delta-good { background: rgba(46,170,106,0.1); color: #2EAA6A; }
+.delta-mid { background: rgba(201,168,76,0.1); color: var(--gold); }
+.delta-bad { background: rgba(220,80,80,0.1); color: #DC5050; }
+
+.metric-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 1px; background: var(--border); margin-bottom: 2px;
+}
+.metric-cell { background: var(--bg-1); padding: 20px 18px; }
+.metric-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em;
+  color: var(--text-3); text-transform: uppercase; margin-bottom: 8px;
+}
+.metric-value {
+  font-family: var(--mono); font-size: 22px; font-weight: 300; color: var(--text);
+}
+.metric-value.good { color: #2EAA6A; }
+.metric-value.warn { color: var(--gold); }
+.metric-value.bad { color: #DC5050; }
+.metric-sub {
+  font-family: var(--mono); font-size: 9px; color: var(--text-3);
+  margin-top: 5px; letter-spacing: 0.05em; line-height: 1.5;
+}
+
+.abi-track {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 5px;
+}
+.abi-track-label {
+  font-family: var(--mono); font-size: 9px; color: var(--text-3);
+  width: 44px; text-align: right;
+}
+.abi-track-bar {
+  flex: 1; height: 1px; background: var(--border); position: relative;
+  overflow: visible;
+}
+.abi-track-fill {
+  height: 1px; position: absolute; top: 0;
+  transition: width 0.6s ease, left 0.6s ease;
+}
+.abi-track-val {
+  font-family: var(--mono); font-size: 9px; color: var(--text-2);
+  min-width: 36px;
+}
+
+.css-state {
+  display: inline-block; font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 2px; margin: 2px;
+}
+.css-under { background: rgba(46,170,106,0.1); color: #2EAA6A; border: 0.5px solid rgba(46,170,106,0.3); }
+.css-moderate { background: rgba(201,168,76,0.08); color: var(--gold); border: 0.5px solid var(--border-gold); }
+.css-over { background: rgba(220,80,80,0.08); color: #DC5050; border: 0.5px solid rgba(220,80,80,0.25); }
+
+.insight-box {
+  border-left: 2px solid var(--gold); background: var(--gold-glow);
+  padding: 16px 20px; margin-bottom: 20px;
+}
+.insight-box p {
+  font-family: var(--mono); font-size: 12px; color: var(--text);
+  line-height: 1.75; letter-spacing: 0.03em;
+}
+
+.intervention-strip {
+  border-left: 2px solid var(--border-gold); padding: 12px 16px;
+  margin-top: 20px; display: none;
+}
+.intervention-strip p {
+  font-family: var(--mono); font-size: 11px; color: var(--text-2);
+  line-height: 1.65; letter-spacing: 0.03em;
+}
+
+.screen { display: none; }
+.screen.active { display: block; }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.saving { animation: pulse 1s infinite; }
 </style>
 </head>
 <body>
@@ -48,255 +153,538 @@
 
 <header>
   <div class="header-inner">
-    <a href="/" class="wordmark">DDVM</a>
-    <a href="/dashboard" class="nav-link">Dashboard →</a>
+    <span class="wordmark">Prediction Study</span>
+    <a href="/dashboard" class="nav-link" tabindex="-1">Research console →</a>
   </div>
 </header>
 
 <div class="container">
 
-  <div class="fade-up" id="intro-screen">
-    <p class="eyebrow">Instructions</p>
-    <h1>Startup growth<br><em>predictions</em></h1>
+  <!-- ══ SCREEN 0 — INTRO ══ -->
+  <div id="screen-intro" class="screen active">
+    <div class="fade-up">
+      <p class="eyebrow">Study instructions</p>
+      <h1>Market<br><em>forecasting</em></h1>
+    </div>
     <div class="divider-gold"></div>
-    <div class="panel" style="margin-bottom:28px;">
-      <p style="font-size:16px; line-height:1.8; color:var(--text-2);">
-        You are reviewing growth data for early-stage startups.
+    <div class="panel fade-up-2" style="margin-bottom:28px;">
+      <p style="font-size:15px; line-height:1.85; color:var(--text-2);">
+        You will make a series of market predictions. In each round you will see two figures — a recent reported figure and a market forecast — and submit your own prediction.
       </p>
-      <p style="font-size:16px; line-height:1.8; color:var(--text-2); margin-top:12px;">
-        In each round ( total 20 ), you will see:
-      </p>
-      <div style="margin:16px 0 0 0;">
-        <div style="display:flex; gap:16px; align-items:flex-start; margin-bottom:12px;">
-          <span style="font-family:var(--mono); font-size:11px; color:var(--gold); padding-top:2px; min-width:20px;">01</span>
-          <p style="font-size:15px; color:var(--text); line-height:1.6;">The startup's <strong>user count from last month</strong></p>
+      <div style="margin-top:24px; padding-top:24px; border-top:0.5px solid var(--border);">
+        <div style="display:flex; gap:14px; margin-bottom:12px;">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
+          <p style="font-size:14px;color:var(--text);line-height:1.6;"><strong>20 rounds</strong> in total</p>
         </div>
-        <div style="display:flex; gap:16px; align-items:flex-start; margin-bottom:12px;">
-          <span style="font-family:var(--mono); font-size:11px; color:var(--gold); padding-top:2px; min-width:20px;">02</span>
-          <p style="font-size:15px; color:var(--text); line-height:1.6;">An <strong>analyst's estimate</strong> for this month</p>
+        <div style="display:flex; gap:14px; margin-bottom:12px;">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
+          <p style="font-size:14px;color:var(--text);line-height:1.6;"><strong>Full analysis</strong> of your predictions shown at the end</p>
         </div>
-        <div style="display:flex; gap:16px; align-items:flex-start;">
-          <span style="font-family:var(--mono); font-size:11px; color:var(--gold); padding-top:2px; min-width:20px;">03</span>
-          <p style="font-size:15px; color:var(--text); line-height:1.6;">Your job: <strong>predict this month's user count</strong></p>
+        <div style="display:flex; gap:14px; margin-bottom:12px;">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
+          <p style="font-size:14px;color:var(--text);line-height:1.6;">The market forecast <strong>may or may not be accurate</strong></p>
+        </div>
+        <div style="display:flex; gap:14px;">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
+          <p style="font-size:14px;color:var(--text);line-height:1.6;">Takes approximately <strong>8–10 minutes</strong></p>
         </div>
       </div>
-      <div style="margin-top:20px; padding-top:20px; border-top:0.5px solid var(--border);">
-        <p style="font-size:13px; color:var(--text-3); font-family:var(--mono); letter-spacing:0.05em;">
-          After each prediction, you will see the actual outcome. The analyst estimate may or may not be accurate — use your own judgment.
-        </p>
-      </div>
     </div>
-
-    <div class="field">
-      <label for="user_id_intro">Your participant ID</label>
-      <input type="text" id="user_id_intro" placeholder="e.g. user_001" autocomplete="off">
+    <div class="field fade-up-3">
+      <label for="user_id_input">Participant ID</label>
+      <input type="text" id="user_id_input"
+             placeholder="Choose any identifier, e.g. falcon_42"
+             autocomplete="off" spellcheck="false">
+      <p style="font-family:var(--mono);font-size:10px;color:var(--text-3);margin-top:8px;letter-spacing:0.05em;">
+        No personal information is collected.
+      </p>
     </div>
-    <button class="btn btn-full" onclick="startTask()">Begin task →</button>
+    <button class="btn btn-full fade-up-3" onclick="startStudy()">Begin study →</button>
   </div>
 
-  <div id="task-screen" style="display:none;">
-
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
-      <p class="eyebrow" style="margin:0;">Prediction task</p>
-      <span style="font-family:var(--mono); font-size:12px; color:var(--text-3);" id="round-counter">Round 1 of 20</span>
+  <!-- ══ SCREEN 1 — TASK ══ -->
+  <div id="screen-task" class="screen">
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
     </div>
 
-    <div class="panel-gold" style="margin-bottom:28px;" id="task-data-panel">
-      <p class="eyebrow">Last month's users</p>
-      <div class="anchor-display" id="display-anchor">—</div>
-      <div class="signal-bar"></div>
-      <div style="margin-top:8px;">
-        <p class="stat-label">Analyst estimate for this month</p>
-        <p style="font-family:var(--mono); font-size:22px; color:var(--text);" id="display-signal">—</p>
+    <div class="stimulus">
+      <div class="stimulus-cell">
+        <p class="stimulus-label">Last month's figure</p>
+        <p class="stimulus-value" id="disp-anchor">—</p>
+        <p class="stimulus-unit">thousands of users</p>
+      </div>
+      <div class="stimulus-cell">
+        <p class="stimulus-label">Market forecast</p>
+        <p class="stimulus-value" id="disp-signal">—</p>
+        <p class="stimulus-unit">thousands of users</p>
       </div>
     </div>
 
-    <div style="padding:16px 20px; background:var(--bg-2); border-left:2px solid var(--border-gold); margin-bottom:32px;" id="task-prompt-box">
-      <p style="font-family:var(--mono); font-size:13px; color:var(--text-2); line-height:1.7;">
-        Based on last month's data and the analyst estimate above, predict this startup's user count for this month.
-      </p>
-    </div>
+    <form id="task-form" autocomplete="off">
+      <input type="hidden" name="user_id" id="f-uid">
+      <input type="hidden" name="condition" id="f-condition">
+      <input type="hidden" name="round_number" id="f-round">
+      <input type="hidden" name="anchor" id="f-anchor">
+      <input type="hidden" name="anchor_displacement" id="f-displacement">
+      <input type="hidden" name="signal" id="f-signal">
+      <input type="hidden" name="signal_noise" id="f-noise">
+      <input type="hidden" name="true_value" id="f-true">
 
-    <div id="result-panel" class="result-panel">
-      <p class="eyebrow" style="margin-bottom:16px;">Round result</p>
-      <div class="result-row">
-        <span class="result-label">Your prediction</span>
-        <span class="result-value" id="res-estimate">—</span>
+      <div class="field">
+        <label for="decision_value">Your prediction</label>
+        <input type="number" class="estimate-input" id="decision_value"
+               name="decision_value" placeholder="0.0"
+               step="0.1" min="0" required>
+        <p class="input-unit">thousands of users</p>
       </div>
-      <div class="result-row">
-        <span class="result-label">Actual outcome</span>
-        <span class="result-value good" id="res-actual">—</span>
+
+      <div class="field" style="margin-bottom:16px;">
+        <button type="button" class="reasoning-toggle"
+                onclick="toggleReasoning()">+ Add reasoning (optional)</button>
+        <textarea id="reasoning" name="reasoning"
+                  placeholder="Why did you choose this value?"
+                  style="display:none; margin-top:0;"></textarea>
       </div>
-      <div class="result-row">
-        <span class="result-label">Your error</span>
-        <span class="result-value" id="res-error">—</span>
-      </div>
-      <div id="intervention-box" class="intervention-box">
-        <p class="intervention-label">System note</p>
+
+      <div class="intervention-strip" id="intervention-strip">
         <p id="intervention-text"></p>
       </div>
-    </div>
 
-    <form id="task-form">
-      <input type="hidden" name="user_id" id="f-user-id">
-      <input type="hidden" name="anchor" id="f-anchor">
-      <input type="hidden" name="signal" id="f-signal">
-      <input type="hidden" name="difficulty" id="f-difficulty">
-      <input type="hidden" name="true_value" id="f-true-value">
-      <input type="hidden" name="round_number" id="f-round">
-
-      <div class="field" id="estimate-field">
-        <label for="decision_value">Your prediction <span style="color:var(--text-3);">(in thousands of users)</span></label>
-        <input type="number" id="decision_value" name="decision_value"
-               placeholder="e.g. 52" step="0.1" min="0" required>
-      </div>
-
-      <div class="field" id="confidence-field">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <label style="margin:0;">How confident are you?</label>
-          <span class="confidence-display" id="conf-display">50</span>
-        </div>
-        <input type="range" id="confidence_slider" min="0" max="100" value="50" step="1">
-        <input type="hidden" id="confidence" name="confidence" value="50">
-        <div style="display:flex; justify-content:space-between; margin-top:6px;">
-          <span style="font-family:var(--mono);font-size:10px;color:var(--text-3);">0 — Just guessing</span>
-          <span style="font-family:var(--mono);font-size:10px;color:var(--text-3);">100 — Completely certain</span>
-        </div>
-      </div>
-
-      <div class="field" id="reasoning-field">
-        <label for="reasoning">Why did you choose this number? <span style="color:var(--text-3);">(optional)</span></label>
-        <textarea id="reasoning" name="reasoning"
-                  placeholder="e.g. I ignored the analyst estimate because..."></textarea>
-      </div>
-
-      <button type="submit" class="btn btn-full" id="submit-btn">Submit prediction →</button>
-      <button type="button" class="btn btn-full" id="next-btn" style="display:none; margin-top:12px;" onclick="nextRound()">Next round →</button>
+      <button type="submit" class="btn btn-full" id="submit-btn">
+        Submit prediction →
+      </button>
     </form>
-
   </div>
 
-  <div id="done-screen" style="display:none;">
-    <p class="eyebrow">Complete</p>
-    <h1>All rounds<br><em>finished</em></h1>
+  <!-- ══ SCREEN 2 — BATCH REVEAL ══ -->
+  <div id="screen-reveal" class="screen">
+    <p class="eyebrow" id="reveal-eyebrow">Rounds 1–5 results</p>
+    <h1>Batch<br><em>results</em></h1>
     <div class="divider-gold"></div>
-    <div class="panel" style="margin-bottom:28px;">
-      <p style="font-size:16px; line-height:1.8; color:var(--text-2);">
-        Thank you. Your 20 predictions have been recorded.
-      </p>
-      <p style="font-size:14px; line-height:1.8; color:var(--text-3); margin-top:12px; font-family:var(--mono);">
-        Results will be analysed as part of the DDVM research program.
-      </p>
+    <div id="reveal-cards" style="margin-bottom:32px;"></div>
+    <button class="btn btn-full" onclick="continueAfterReveal()">Continue →</button>
+  </div>
+
+  <!-- ══ SCREEN 3 — END ANALYSIS ══ -->
+  <div id="screen-analysis" class="screen">
+    <p class="eyebrow">Study complete</p>
+    <h1>Your decision<br><em>profile</em></h1>
+    <div class="divider-gold"></div>
+
+    <!-- Primary metrics -->
+    <div class="metric-grid" style="margin-bottom:2px;">
+      <div class="metric-cell">
+        <p class="metric-label">Reference alignment</p>
+        <p class="metric-value" id="an-abi">—</p>
+        <p class="metric-sub" id="an-abi-sub">mean anchoring bias index</p>
+      </div>
+      <div class="metric-cell">
+        <p class="metric-label">Accuracy drift</p>
+        <p class="metric-value" id="an-cd">—</p>
+        <p class="metric-sub" id="an-cd-sub">error trend across rounds</p>
+      </div>
     </div>
-    <a href="/dashboard" class="btn">View dashboard →</a>
+    <div class="metric-grid" style="margin-bottom:2px;">
+      <div class="metric-cell">
+        <p class="metric-label">Forecast usage</p>
+        <p class="metric-value" id="an-sii">—</p>
+        <p class="metric-sub" id="an-sii-sub">signal independence index</p>
+      </div>
+      <div class="metric-cell">
+        <p class="metric-label">Pattern stability</p>
+        <p class="metric-value" id="an-tli">—</p>
+        <p class="metric-sub" id="an-tli-sub">trajectory lock-in</p>
+      </div>
+    </div>
+    <div class="metric-grid" style="margin-bottom:32px;">
+      <div class="metric-cell">
+        <p class="metric-label">Forecast sensitivity</p>
+        <p class="metric-value" id="an-be">—</p>
+        <p class="metric-sub" id="an-be-sub">bias elasticity</p>
+      </div>
+      <div class="metric-cell">
+        <p class="metric-label">Correction tendency</p>
+        <p class="metric-value" id="an-ads">—</p>
+        <p class="metric-sub" id="an-ads-sub">anchor displacement sensitivity</p>
+      </div>
+    </div>
+
+    <!-- ABI trajectory -->
+    <div style="margin-bottom:32px;">
+      <p class="eyebrow" style="margin-bottom:16px;">Reference alignment by round</p>
+      <div id="abi-tracks"></div>
+      <div style="display:flex; justify-content:space-between; margin-top:8px;">
+        <span style="font-family:var(--mono);font-size:9px;color:var(--text-3);">← independent of reference</span>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--text-3);">aligned with reference →</span>
+      </div>
+    </div>
+
+    <!-- CSS state sequence -->
+    <div style="margin-bottom:32px;" id="css-section">
+      <p class="eyebrow" style="margin-bottom:12px;">Cognitive state sequence</p>
+      <div id="css-states" style="margin-bottom:8px;"></div>
+      <p class="metric-sub" id="css-summary"></p>
+    </div>
+
+    <!-- Insight -->
+    <div class="insight-box" style="margin-bottom:32px;">
+      <p id="insight-text">Analysing your decision pattern...</p>
+    </div>
+
+    <p style="font-family:var(--mono);font-size:11px;color:var(--text-3);line-height:1.8;letter-spacing:0.05em;margin-bottom:28px;">
+      Thank you for participating. Your responses have been recorded as part of an independent research program on sequential decision-making.
+    </p>
+    <a href="/dashboard" class="btn">Research console →</a>
   </div>
 
 </div>
 
 <footer class="page-footer">
-  <p>Decision Drift Validation Model — Behavioral Layer</p>
+  <p>Independent Research — Sequential Decision Study</p>
 </footer>
 
 <script>
 const TOTAL_ROUNDS = 20;
-let currentRound = 1;
-let userId = '';
+const REVEAL_EVERY = 5;
 
-function startTask() {
-  userId = document.getElementById('user_id_intro').value.trim();
-  if (!userId) { alert('Please enter your participant ID first.'); return; }
-  document.getElementById('intro-screen').style.display = 'none';
-  document.getElementById('task-screen').style.display = 'block';
+let userId = '';
+let condition = 'control';
+let currentRound = 1;
+let roundData = [];
+let pendingRevealFrom = 1;
+
+const urlParams = new URLSearchParams(window.location.search);
+condition = urlParams.get('condition') || 'control';
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function startStudy() {
+  userId = document.getElementById('user_id_input').value.trim();
+  if (!userId) { document.getElementById('user_id_input').focus(); return; }
+  show('screen-task');
   loadTask();
 }
 
-function loadTask() {
-  document.getElementById('round-counter').textContent = 'Round ' + currentRound + ' of ' + TOTAL_ROUNDS;
-  document.getElementById('f-user-id').value = userId;
-  document.getElementById('f-round').value = currentRound;
+function updateProgress() {
+  const pct = ((currentRound - 1) / TOTAL_ROUNDS) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+}
 
-  document.getElementById('result-panel').style.display = 'none';
-  document.getElementById('intervention-box').style.display = 'none';
-  document.getElementById('estimate-field').style.display = 'block';
-  document.getElementById('confidence-field').style.display = 'block';
-  document.getElementById('reasoning-field').style.display = 'block';
-  document.getElementById('submit-btn').style.display = 'block';
-  document.getElementById('next-btn').style.display = 'none';
+function loadTask() {
+  updateProgress();
+  document.getElementById('f-uid').value = userId;
+  document.getElementById('f-condition').value = condition;
+  document.getElementById('f-round').value = currentRound;
   document.getElementById('decision_value').value = '';
-  document.getElementById('confidence_slider').value = 50;
-  document.getElementById('confidence').value = 50;
-  document.getElementById('conf-display').textContent = '50';
   document.getElementById('reasoning').value = '';
+  document.getElementById('reasoning').style.display = 'none';
+  document.getElementById('reasoning-toggle').textContent = '+ Add reasoning (optional)';
+  document.getElementById('intervention-strip').style.display = 'none';
+  document.getElementById('submit-btn').textContent = 'Submit prediction →';
+  document.getElementById('submit-btn').disabled = false;
 
   fetch('/task')
     .then(r => r.json())
     .then(data => {
-      document.getElementById('display-anchor').textContent = data.anchor.toFixed(1) + 'k';
-      document.getElementById('display-signal').textContent = data.signal.toFixed(1) + 'k users';
+      document.getElementById('disp-anchor').textContent = data.anchor.toFixed(1);
+      document.getElementById('disp-signal').textContent = data.signal.toFixed(1);
       document.getElementById('f-anchor').value = data.anchor;
+      document.getElementById('f-displacement').value = data.anchor_displacement;
       document.getElementById('f-signal').value = data.signal;
-      document.getElementById('f-difficulty').value = data.difficulty;
-      document.getElementById('f-true-value').value = data.true_value;
+      document.getElementById('f-noise').value = data.signal_noise;
+      document.getElementById('f-true').value = data.true_value;
+      setTimeout(() => document.getElementById('decision_value').focus(), 100);
     });
 }
 
-function nextRound() {
-  if (currentRound >= TOTAL_ROUNDS) {
-    document.getElementById('task-screen').style.display = 'none';
-    document.getElementById('done-screen').style.display = 'block';
+function toggleReasoning() {
+  const t = document.getElementById('reasoning');
+  const btn = document.getElementById('reasoning-toggle');
+  if (t.style.display === 'none') {
+    t.style.display = 'block';
+    btn.textContent = '− Hide reasoning';
+    t.focus();
   } else {
-    currentRound++;
-    loadTask();
-    window.scrollTo(0, 0);
+    t.style.display = 'none';
+    btn.textContent = '+ Add reasoning (optional)';
   }
 }
 
-document.getElementById('confidence_slider').addEventListener('input', function() {
-  document.getElementById('conf-display').textContent = this.value;
-  document.getElementById('confidence').value = this.value;
-});
-
 document.getElementById('task-form').addEventListener('submit', function(e) {
   e.preventDefault();
+  const val = parseFloat(document.getElementById('decision_value').value);
+  if (isNaN(val) || val < 0) { document.getElementById('decision_value').focus(); return; }
 
-  const formData = new FormData(this);
-  document.getElementById('submit-btn').textContent = 'Saving...';
-  document.getElementById('submit-btn').disabled = true;
+  const btn = document.getElementById('submit-btn');
+  btn.textContent = 'Saving...';
+  btn.disabled = true;
+  btn.classList.add('saving');
 
-  fetch('/submit', { method: 'POST', body: formData })
+  fetch('/submit', { method: 'POST', body: new FormData(this) })
     .then(r => r.json())
     .then(data => {
+      btn.classList.remove('saving');
       if (data.status === 'error') {
-        alert('Error: ' + data.msg);
-        document.getElementById('submit-btn').textContent = 'Submit prediction →';
-        document.getElementById('submit-btn').disabled = false;
+        btn.textContent = 'Submit prediction →';
+        btn.disabled = false;
         return;
       }
 
-      const error = data.error;
-      const errorClass = error < 5 ? 'good' : error < 15 ? 'warn' : 'bad';
+      roundData.push({
+        round: currentRound,
+        estimate: data.your_estimate,
+        actual: data.true_value,
+        abi: data.abi,
+        rel_error: data.relative_error,
+        anchor: parseFloat(document.getElementById('f-anchor').value),
+        signal: parseFloat(document.getElementById('f-signal').value),
+        displacement: parseFloat(document.getElementById('f-displacement').value)
+      });
 
-      document.getElementById('res-estimate').textContent = data.your_estimate + 'k';
-      document.getElementById('res-actual').textContent = data.true_value + 'k';
-      document.getElementById('res-error').textContent = error.toFixed(1) + 'k';
-      document.getElementById('res-error').className = 'result-value ' + errorClass;
-
-      if (data.intervention) {
+      if (condition === 'treatment' && data.intervention) {
         document.getElementById('intervention-text').textContent = data.intervention;
-        document.getElementById('intervention-box').style.display = 'block';
+        document.getElementById('intervention-strip').style.display = 'block';
       }
 
-      document.getElementById('result-panel').style.display = 'block';
-      document.getElementById('estimate-field').style.display = 'none';
-      document.getElementById('confidence-field').style.display = 'none';
-      document.getElementById('reasoning-field').style.display = 'none';
-      document.getElementById('submit-btn').style.display = 'none';
-      document.getElementById('next-btn').style.display = 'block';
-      document.getElementById('next-btn').textContent = currentRound >= TOTAL_ROUNDS ? 'Finish →' : 'Next round →';
+      const isReveal = (currentRound % REVEAL_EVERY === 0);
+      const isLast = (currentRound === TOTAL_ROUNDS);
 
-      window.scrollTo(0, 0);
+      if (isLast) {
+        showFinalAnalysis();
+      } else if (isReveal) {
+        showBatchReveal();
+      } else {
+        currentRound++;
+        loadTask();
+      }
+    })
+    .catch(() => {
+      btn.textContent = 'Submit prediction →';
+      btn.disabled = false;
+      btn.classList.remove('saving');
     });
 });
+
+function showBatchReveal() {
+  const from = pendingRevealFrom;
+  const to = currentRound;
+  const batch = roundData.filter(r => r.round >= from && r.round <= to);
+  document.getElementById('reveal-eyebrow').textContent =
+    'Rounds ' + from + '–' + to + ' results';
+
+  const container = document.getElementById('reveal-cards');
+  container.innerHTML = '';
+  batch.forEach(r => {
+    const errPct = Math.abs((r.estimate - r.actual) / r.actual) * 100;
+    const cls = errPct < 8 ? 'accurate' : errPct < 20 ? 'close' : 'off';
+    const deltaCls = errPct < 8 ? 'delta-good' : errPct < 20 ? 'delta-mid' : 'delta-bad';
+    const sign = r.estimate > r.actual ? '+' : '';
+    container.innerHTML += `
+      <div class="reveal-card ${cls}">
+        <span class="reveal-round">Round ${r.round}</span>
+        <div class="reveal-numbers">
+          <div class="reveal-num">
+            <p class="reveal-num-label">Your prediction</p>
+            <p class="reveal-num-val">${r.estimate.toFixed(1)}k</p>
+          </div>
+          <div class="reveal-num">
+            <p class="reveal-num-label">Actual figure</p>
+            <p class="reveal-num-val">${r.actual.toFixed(1)}k</p>
+          </div>
+          <span class="reveal-delta ${deltaCls}">${sign}${(r.estimate - r.actual).toFixed(1)}k</span>
+        </div>
+      </div>`;
+  });
+  pendingRevealFrom = to + 1;
+  show('screen-reveal');
+}
+
+function continueAfterReveal() {
+  currentRound++;
+  show('screen-task');
+  loadTask();
+}
+
+function showFinalAnalysis() {
+  // compute metrics client-side from roundData
+  const n = roundData.length;
+  const abis = roundData.map(r => r.abi);
+  const relErrors = roundData.map(r => r.rel_error);
+  const estimates = roundData.map(r => r.estimate);
+  const actuals = roundData.map(r => r.actual);
+  const signals = roundData.map(r => r.signal);
+  const displacements = roundData.map(r => Math.abs(r.displacement));
+  const rounds = roundData.map(r => r.round);
+
+  // helpers
+  const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+  const std = arr => { const m=mean(arr); return Math.sqrt(arr.reduce((a,b)=>a+(b-m)**2,0)/arr.length); };
+  const corr = (x, y) => {
+    const mx=mean(x), my=mean(y);
+    const num=x.reduce((s,xi,i)=>s+(xi-mx)*(y[i]-my),0);
+    const den=Math.sqrt(x.reduce((s,xi)=>s+(xi-mx)**2,0)*y.reduce((s,yi)=>s+(yi-my)**2,0));
+    return den>0.01 ? num/den : 0;
+  };
+  const linSlope = (x, y) => {
+    const mx=mean(x), my=mean(y);
+    const num=x.reduce((s,xi,i)=>s+(xi-mx)*(y[i]-my),0);
+    const den=x.reduce((s,xi)=>s+(xi-mx)**2,0);
+    return den>0.01 ? num/den : 0;
+  };
+
+  // ── Mean ABI
+  const meanAbi = mean(abis);
+  const abiEl = document.getElementById('an-abi');
+  abiEl.textContent = meanAbi.toFixed(3);
+  abiEl.className = 'metric-value ' +
+    (Math.abs(meanAbi) < 0.25 ? 'good' : Math.abs(meanAbi) < 0.55 ? 'warn' : 'bad');
+  document.getElementById('an-abi-sub').textContent =
+    meanAbi > 0.55 ? 'strong reference alignment detected' :
+    meanAbi < 0.15 ? 'largely independent of reference' :
+    'moderate reference influence';
+
+  // ── Calibration Drift (CD) — slope of rel_error over rounds
+  const cdSlope = linSlope(rounds, relErrors);
+  const cdEl = document.getElementById('an-cd');
+  if (cdSlope < -0.001) {
+    cdEl.textContent = '↓ improving';
+    cdEl.className = 'metric-value good';
+    document.getElementById('an-cd-sub').textContent = 'error decreased across rounds';
+  } else if (cdSlope > 0.001) {
+    cdEl.textContent = '↑ worsening';
+    cdEl.className = 'metric-value bad';
+    document.getElementById('an-cd-sub').textContent = 'error increased across rounds';
+  } else {
+    cdEl.textContent = '→ stable';
+    cdEl.className = 'metric-value warn';
+    document.getElementById('an-cd-sub').textContent = 'no directional trend detected';
+  }
+
+  // ── SII — signal independence
+  const estErrors = estimates.map((e,i) => e - actuals[i]);
+  const sigErrors = signals.map((s,i) => s - actuals[i]);
+  const rSignal = std(sigErrors) > 0.01 && std(estErrors) > 0.01 ?
+    corr(estErrors, sigErrors) : 0;
+  const sii = 1 - Math.abs(rSignal);
+  const siiEl = document.getElementById('an-sii');
+  siiEl.textContent = sii.toFixed(3);
+  siiEl.className = 'metric-value ' +
+    (sii > 0.7 ? 'good' : sii > 0.4 ? 'warn' : 'bad');
+  document.getElementById('an-sii-sub').textContent =
+    sii > 0.7 ? 'predictions largely independent of forecast' :
+    sii > 0.4 ? 'moderate forecast influence' :
+    'predictions closely tracked the forecast';
+
+  // ── TLI — trajectory lock-in
+  const half = Math.floor(n / 2);
+  const earlyStd = std(abis.slice(0, half));
+  const lateStd = std(abis.slice(half));
+  const tli = earlyStd > 0.01 ? 1 - (lateStd / earlyStd) : 0;
+  const tliEl = document.getElementById('an-tli');
+  tliEl.textContent = tli.toFixed(3);
+  tliEl.className = 'metric-value ' +
+    (tli > 0.3 ? 'warn' : Math.abs(tli) < 0.15 ? 'good' : 'warn');
+  document.getElementById('an-tli-sub').textContent =
+    tli > 0.4 ? 'bias pattern stabilised (lock-in detected)' :
+    tli < -0.2 ? 'bias pattern became more variable over time' :
+    'no significant lock-in detected';
+
+  // ── BE — bias elasticity (slope of ABI on |displacement|)
+  const beSlope = std(displacements) > 0.01 ? linSlope(displacements, abis) : 0;
+  const beEl = document.getElementById('an-be');
+  beEl.textContent = beSlope.toFixed(4);
+  beEl.className = 'metric-value ' +
+    (Math.abs(beSlope) < 0.005 ? 'good' : Math.abs(beSlope) < 0.015 ? 'warn' : 'bad');
+  document.getElementById('an-be-sub').textContent =
+    beSlope > 0.015 ? 'stronger anchoring with more extreme references' :
+    beSlope < -0.005 ? 'greater pushback against extreme references' :
+    'anchoring not sensitive to reference magnitude';
+
+  // ── ADS — anchor displacement sensitivity
+  const adjustments = roundData.map(r => Math.abs(r.estimate - r.anchor));
+  const ads = std(displacements) > 0.01 && std(adjustments) > 0.01 ?
+    corr(adjustments, displacements) : 0;
+  const adsEl = document.getElementById('an-ads');
+  adsEl.textContent = ads.toFixed(3);
+  adsEl.className = 'metric-value ' +
+    (ads > 0.3 ? 'good' : ads > 0 ? 'warn' : 'bad');
+  document.getElementById('an-ads-sub').textContent =
+    ads > 0.3 ? 'adjusts more against extreme references' :
+    ads < 0 ? 'less adjustment against extreme references' :
+    'adjustment not sensitive to reference extremity';
+
+  // ── ABI trajectory bars
+  const trackContainer = document.getElementById('abi-tracks');
+  trackContainer.innerHTML = '';
+  const groups = [
+    {label:'1–5', vals: abis.slice(0,5)},
+    {label:'6–10', vals: abis.slice(5,10)},
+    {label:'11–15', vals: abis.slice(10,15)},
+    {label:'16–20', vals: abis.slice(15,20)}
+  ];
+  groups.forEach(g => {
+    const avg = mean(g.vals);
+    // map ABI [-1, 2] to [0, 100%] for display, center at 0.5
+    const pct = Math.min(100, Math.max(0, (avg + 1) / 3 * 100));
+    const color = Math.abs(avg) < 0.25 ? '#2EAA6A' : avg < 0.55 ? '#C9A84C' : '#DC5050';
+    trackContainer.innerHTML += `
+      <div class="abi-track">
+        <span class="abi-track-label">${g.label}</span>
+        <div class="abi-track-bar">
+          <div class="abi-track-fill" style="width:${pct}%;background:${color};left:0;"></div>
+        </div>
+        <span class="abi-track-val">${avg.toFixed(2)}</span>
+      </div>`;
+  });
+
+  // ── CSS state sequence (client-side approximation)
+  const cssContainer = document.getElementById('css-states');
+  cssContainer.innerHTML = '';
+  abis.forEach((a, i) => {
+    const state = a < 0.2 ? 'under' : a < 0.6 ? 'moderate' : 'over';
+    const label = a < 0.2 ? 'independent' : a < 0.6 ? 'moderate' : 'aligned';
+    const cls = 'css-' + state;
+    cssContainer.innerHTML += `<span class="css-state ${cls}">${label}</span>`;
+  });
+
+  const transitions = abis.filter((a,i) => {
+    if (i === 0) return false;
+    const prev = abis[i-1] < 0.2 ? 0 : abis[i-1] < 0.6 ? 1 : 2;
+    const curr = a < 0.2 ? 0 : a < 0.6 ? 1 : 2;
+    return prev !== curr;
+  }).length;
+  document.getElementById('css-summary').textContent =
+    transitions + ' state transition' + (transitions !== 1 ? 's' : '') +
+    ' across 20 rounds — ' +
+    (transitions <= 3 ? 'stable pattern' :
+     transitions <= 7 ? 'moderate variability' : 'high variability');
+
+  // ── Insight
+  let insight = '';
+  if (Math.abs(meanAbi) > 0.55 && tli > 0.3) {
+    insight = 'Your predictions showed strong and stable alignment with the reference figure. The pattern locked in across rounds — your estimates consistently tracked the reference regardless of how far it was from the actual outcome.';
+  } else if (Math.abs(meanAbi) < 0.2 && sii > 0.6) {
+    insight = 'Your predictions were largely independent of both the reference figure and the market forecast. You appear to have formed judgments from your own baseline rather than the provided values.';
+  } else if (beSlope > 0.015) {
+    insight = 'Your alignment with the reference figure increased when the reference was more extreme. This pattern suggests susceptibility to strong anchors specifically, rather than uniform reference influence.';
+  } else if (ads > 0.35) {
+    insight = 'You showed a tendency to adjust away from the reference figure when it was more extreme — a partial correction response. This is associated with awareness of reference unreliability.';
+  } else if (cdSlope > 0.001) {
+    insight = 'Your prediction error increased across rounds. This may reflect accumulated uncertainty, strategy shifts, or fatigue effects in later rounds.';
+  } else if (cdSlope < -0.001) {
+    insight = 'Your accuracy improved across rounds. Error in the final block was meaningfully lower than in the opening rounds, suggesting adaptation or learning within the session.';
+  } else {
+    insight = 'Your predictions showed moderate reference influence with no strong directional trend across rounds. No single behavioral pattern dominated your decision profile.';
+  }
+  document.getElementById('insight-text').textContent = insight;
+
+  show('screen-analysis');
+}
 </script>
 </body>
 </html>
