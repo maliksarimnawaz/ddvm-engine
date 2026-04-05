@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DDVM — Dashboard</title>
+<title>DDVM — Research Console</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -12,7 +12,7 @@
 <header>
   <div class="header-inner">
     <a href="/" class="wordmark">DDVM</a>
-    <a href="/" class="nav-link">← New decision</a>
+    <a href="/" class="nav-link">← New session</a>
   </div>
 </header>
 
@@ -35,8 +35,8 @@
       <p class="stat-value">{{ decisions | selectattr('outcome_value') | list | length }}</p>
     </div>
     <div class="stat-cell">
-      <p class="stat-label">Anchoring flags</p>
-      <p class="stat-value">{{ decisions | selectattr('anchor_warning') | list | length }}</p>
+      <p class="stat-label">Unique users</p>
+      <p class="stat-value">{{ decisions | map(attribute='user_id') | unique | list | length }}</p>
     </div>
   </div>
 
@@ -46,12 +46,14 @@
         <tr>
           <th>#</th>
           <th>User</th>
+          <th>Round</th>
+          <th>Condition</th>
           <th>Estimate</th>
-          <th>Confidence</th>
-          <th>Adjusted</th>
-          <th>Anchor flag</th>
+          <th>Anchor</th>
+          <th>ABI</th>
+          <th>Rel. error</th>
           <th>Outcome</th>
-          <th></th>
+          <th>Time</th>
         </tr>
       </thead>
       <tbody>
@@ -59,15 +61,25 @@
         <tr>
           <td style="color:var(--text-3);">{{ d.id }}</td>
           <td class="mono">{{ d.user_id }}</td>
-          <td class="mono">{{ "%.2f"|format(d.decision_value) }}</td>
-          <td class="mono">{{ d.confidence | int }}%</td>
-          <td class="mono">{{ "%.2f"|format(d.adjusted_estimate) if d.adjusted_estimate else '—' }}</td>
+          <td class="mono">{{ d.round_number if d.round_number else '—' }}</td>
           <td>
-            {% if d.anchor_warning %}
-              <span class="badge badge-warn">Flagged</span>
+            {% if d.condition == 'treatment' %}
+              <span class="badge badge-warn">treatment</span>
             {% else %}
-              <span class="badge badge-none">Clear</span>
+              <span class="badge badge-none">control</span>
             {% endif %}
+          </td>
+          <td class="mono">{{ "%.2f"|format(d.decision_value) }}</td>
+          <td class="mono">{{ "%.1f"|format(d.anchor) if d.anchor else '—' }}</td>
+          <td class="mono">
+            {% if d.abi is not none %}
+              {{ "%.3f"|format(d.abi) }}
+            {% else %}—{% endif %}
+          </td>
+          <td class="mono">
+            {% if d.relative_error is not none %}
+              {{ "%.3f"|format(d.relative_error) }}
+            {% else %}—{% endif %}
           </td>
           <td class="mono">
             {% if d.outcome_value %}
@@ -76,18 +88,12 @@
               <span style="color:var(--text-3);">—</span>
             {% endif %}
           </td>
-          <td>
-            {% if not d.outcome_value %}
-              <a href="/log_outcome/{{ d.id }}" class="btn-secondary" style="font-size:9px; padding:6px 12px;">Log</a>
-            {% else %}
-              <span class="badge badge-ok">Done</span>
-            {% endif %}
-          </td>
+          <td class="mono" style="color:var(--text-3);font-size:10px;">{{ d.timestamp }}</td>
         </tr>
         {% endfor %}
         {% if not decisions %}
         <tr>
-          <td colspan="8" style="text-align:center; padding:40px; color:var(--text-3); font-family:var(--mono); font-size:12px; letter-spacing:0.1em;">
+          <td colspan="10" style="text-align:center;padding:40px;color:var(--text-3);font-family:var(--mono);font-size:12px;letter-spacing:0.1em;">
             No decisions recorded yet
           </td>
         </tr>

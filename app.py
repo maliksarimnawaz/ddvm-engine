@@ -62,6 +62,33 @@ class BanditState(Base):
 
 Base.metadata.create_all(engine)
 
+# ── Schema migration: add new columns if they don't exist (Postgres safe)
+def migrate_schema():
+    new_columns = [
+        ("condition",           "VARCHAR(20) DEFAULT 'control'"),
+        ("round_number",        "INTEGER"),
+        ("anchor_displacement", "FLOAT"),
+        ("signal_noise",        "FLOAT"),
+        ("abi",                 "FLOAT"),
+        ("relative_error",      "FLOAT"),
+    ]
+    with engine.connect() as conn:
+        for col_name, col_type in new_columns:
+            try:
+                conn.execute(
+                    __import__("sqlalchemy").text(
+                        f"ALTER TABLE decisions ADD COLUMN IF NOT EXISTS {col_name} {col_type}"
+                    )
+                )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+
+try:
+    migrate_schema()
+except Exception:
+    pass
+
 # ============================================
 # 2. TASK GENERATOR — fully independent
 # ============================================
@@ -464,9 +491,21 @@ def session_metrics(user_id):
 @app.route("/dashboard")
 def dashboard():
     with Session() as session:
-        decisions = session.query(Decision).order_by(
-            Decision.timestamp.desc()).all()
-        session.expunge_all()
+        rows = session.query(Decision).order_by(Decision.timestamp.desc()).all()
+        decisions = [{
+            "id": d.id,
+            "user_id": d.user_id,
+            "condition": d.condition or "control",
+            "round_number": d.round_number,
+            "decision_value": d.decision_value,
+            "anchor": d.anchor,
+            "signal": d.signal,
+            "true_value": d.true_value,
+            "outcome_value": d.outcome_value,
+            "abi": round(d.abi, 3) if d.abi is not None else None,
+            "relative_error": round(d.relative_error, 3) if d.relative_error is not None else None,
+            "timestamp": d.timestamp.strftime("%Y-%m-%d %H:%M") if d.timestamp else ""
+        } for d in rows]
     return render_template("dashboard.html", decisions=decisions)
 
 
