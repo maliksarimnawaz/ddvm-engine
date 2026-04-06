@@ -8,21 +8,17 @@
 </head>
 <body>
 <div class="grain"></div>
-
 <header>
   <div class="header-inner">
     <a href="/" class="wordmark">DDVM</a>
     <a href="/" class="nav-link">← New session</a>
   </div>
 </header>
-
 <div class="container">
-
   <div class="fade-up">
     <p class="eyebrow">Research Console</p>
     <h1>Decision<br><em>records</em></h1>
   </div>
-
   <div class="divider-gold"></div>
 
   <div class="stat-grid fade-up-2" style="margin-bottom:40px;">
@@ -31,28 +27,67 @@
       <p class="stat-value gold">{{ decisions | length }}</p>
     </div>
     <div class="stat-cell">
-      <p class="stat-label">With outcomes</p>
-      <p class="stat-value">{{ decisions | selectattr('outcome_value') | list | length }}</p>
+      <p class="stat-label">Sessions</p>
+      <p class="stat-value">{{ sessions | length }}</p>
     </div>
     <div class="stat-cell">
-      <p class="stat-label">Unique users</p>
-      <p class="stat-value">{{ decisions | map(attribute='user_id') | unique | list | length }}</p>
+      <p class="stat-label">Completed</p>
+      <p class="stat-value">{{ sessions | selectattr('completed') | list | length }}</p>
     </div>
   </div>
 
-  <div class="panel fade-up-3" style="padding:0; overflow:hidden;">
+  <p class="eyebrow" style="margin-bottom:16px;">Active sessions</p>
+  <div class="panel fade-up-2" style="padding:0;overflow:hidden;margin-bottom:40px;">
+    <table>
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Condition</th>
+          <th>Round</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sessions %}
+        <tr>
+          <td class="mono">{{ s.user_id }}</td>
+          <td>
+            {% if s.condition == 'treatment' %}
+              <span class="badge badge-warn">treatment</span>
+            {% else %}
+              <span class="badge badge-none">control</span>
+            {% endif %}
+          </td>
+          <td class="mono">{{ s.current_round }} / 20</td>
+          <td>
+            {% if s.completed %}
+              <span class="badge badge-ok">complete</span>
+            {% else %}
+              <span class="badge badge-none">in progress</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not sessions %}
+        <tr><td colspan="4" style="text-align:center;padding:32px;color:var(--text-3);font-family:var(--mono);font-size:12px;">No sessions yet</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="eyebrow" style="margin-bottom:16px;">Decision log</p>
+  <div class="panel fade-up-3" style="padding:0;overflow:hidden;">
     <table>
       <thead>
         <tr>
           <th>#</th>
           <th>User</th>
           <th>Round</th>
-          <th>Condition</th>
+          <th>Cond.</th>
           <th>Estimate</th>
           <th>Anchor</th>
           <th>ABI</th>
           <th>Rel. error</th>
-          <th>Outcome</th>
           <th>Time</th>
         </tr>
       </thead>
@@ -64,46 +99,25 @@
           <td class="mono">{{ d.round_number if d.round_number else '—' }}</td>
           <td>
             {% if d.condition == 'treatment' %}
-              <span class="badge badge-warn">treatment</span>
+              <span class="badge badge-warn" style="font-size:8px;">T</span>
             {% else %}
-              <span class="badge badge-none">control</span>
+              <span class="badge badge-none" style="font-size:8px;">C</span>
             {% endif %}
           </td>
-          <td class="mono">{{ "%.2f"|format(d.decision_value) }}</td>
+          <td class="mono">{{ "%.1f"|format(d.decision_value) }}</td>
           <td class="mono">{{ "%.1f"|format(d.anchor) if d.anchor else '—' }}</td>
-          <td class="mono">
-            {% if d.abi is not none %}
-              {{ "%.3f"|format(d.abi) }}
-            {% else %}—{% endif %}
-          </td>
-          <td class="mono">
-            {% if d.relative_error is not none %}
-              {{ "%.3f"|format(d.relative_error) }}
-            {% else %}—{% endif %}
-          </td>
-          <td class="mono">
-            {% if d.outcome_value %}
-              <span style="color:var(--gold);">{{ "%.2f"|format(d.outcome_value) }}</span>
-            {% else %}
-              <span style="color:var(--text-3);">—</span>
-            {% endif %}
-          </td>
+          <td class="mono">{% if d.abi is not none %}{{ "%.3f"|format(d.abi) }}{% else %}—{% endif %}</td>
+          <td class="mono">{% if d.relative_error is not none %}{{ "%.3f"|format(d.relative_error) }}{% else %}—{% endif %}</td>
           <td class="mono" style="color:var(--text-3);font-size:10px;">{{ d.timestamp }}</td>
         </tr>
         {% endfor %}
         {% if not decisions %}
-        <tr>
-          <td colspan="10" style="text-align:center;padding:40px;color:var(--text-3);font-family:var(--mono);font-size:12px;letter-spacing:0.1em;">
-            No decisions recorded yet
-          </td>
-        </tr>
+        <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-3);font-family:var(--mono);font-size:12px;letter-spacing:0.1em;">No decisions recorded yet</td></tr>
         {% endif %}
       </tbody>
     </table>
   </div>
-
 </div>
-
 <footer class="page-footer">
   <p>Decision Drift Validation Model — Research Console</p>
 </footer>
