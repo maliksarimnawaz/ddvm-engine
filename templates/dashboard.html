@@ -36,36 +36,19 @@
     </div>
   </div>
 
-  <p class="eyebrow" style="margin-bottom:16px;">Active sessions</p>
+  <p class="eyebrow" style="margin-bottom:16px;">Sessions</p>
   <div class="panel fade-up-2" style="padding:0;overflow:hidden;margin-bottom:40px;">
     <table>
       <thead>
-        <tr>
-          <th>User</th>
-          <th>Condition</th>
-          <th>Round</th>
-          <th>Status</th>
-        </tr>
+        <tr><th>User</th><th>Condition</th><th>Round</th><th>Status</th></tr>
       </thead>
       <tbody>
         {% for s in sessions %}
         <tr>
           <td class="mono">{{ s.user_id }}</td>
-          <td>
-            {% if s.condition == 'treatment' %}
-              <span class="badge badge-warn">treatment</span>
-            {% else %}
-              <span class="badge badge-none">control</span>
-            {% endif %}
-          </td>
+          <td>{% if s.condition == 'treatment' %}<span class="badge badge-warn">treatment</span>{% else %}<span class="badge badge-none">control</span>{% endif %}</td>
           <td class="mono">{{ s.current_round }} / 20</td>
-          <td>
-            {% if s.completed %}
-              <span class="badge badge-ok">complete</span>
-            {% else %}
-              <span class="badge badge-none">in progress</span>
-            {% endif %}
-          </td>
+          <td>{% if s.completed %}<span class="badge badge-ok">complete</span>{% else %}<span class="badge badge-none">in progress</span>{% endif %}</td>
         </tr>
         {% endfor %}
         {% if not sessions %}
@@ -79,17 +62,7 @@
   <div class="panel fade-up-3" style="padding:0;overflow:hidden;">
     <table>
       <thead>
-        <tr>
-          <th>#</th>
-          <th>User</th>
-          <th>Round</th>
-          <th>Cond.</th>
-          <th>Estimate</th>
-          <th>Anchor</th>
-          <th>ABI</th>
-          <th>Rel. error</th>
-          <th>Time</th>
-        </tr>
+        <tr><th>#</th><th>User</th><th>Rnd</th><th>C</th><th>Estimate</th><th>Anchor</th><th>ABI</th><th>Rel.err</th><th>Time</th></tr>
       </thead>
       <tbody>
         {% for d in decisions %}
@@ -97,13 +70,7 @@
           <td style="color:var(--text-3);">{{ d.id }}</td>
           <td class="mono">{{ d.user_id }}</td>
           <td class="mono">{{ d.round_number if d.round_number else '—' }}</td>
-          <td>
-            {% if d.condition == 'treatment' %}
-              <span class="badge badge-warn" style="font-size:8px;">T</span>
-            {% else %}
-              <span class="badge badge-none" style="font-size:8px;">C</span>
-            {% endif %}
-          </td>
+          <td>{% if d.condition == 'treatment' %}<span class="badge badge-warn" style="font-size:8px;">T</span>{% else %}<span class="badge badge-none" style="font-size:8px;">C</span>{% endif %}</td>
           <td class="mono">{{ "%.1f"|format(d.decision_value) }}</td>
           <td class="mono">{{ "%.1f"|format(d.anchor) if d.anchor else '—' }}</td>
           <td class="mono">{% if d.abi is not none %}{{ "%.3f"|format(d.abi) }}{% else %}—{% endif %}</td>
@@ -112,14 +79,12 @@
         </tr>
         {% endfor %}
         {% if not decisions %}
-        <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-3);font-family:var(--mono);font-size:12px;letter-spacing:0.1em;">No decisions recorded yet</td></tr>
+        <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-3);font-family:var(--mono);font-size:12px;letter-spacing:.1em;">No decisions recorded yet</td></tr>
         {% endif %}
       </tbody>
     </table>
   </div>
 </div>
-<footer class="page-footer">
-  <p>Decision Drift Validation Model — Research Console</p>
-</footer>
+<footer class="page-footer"><p>Decision Drift Validation Model — Research Console</p></footer>
 </body>
 </html>
