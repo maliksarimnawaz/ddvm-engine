@@ -1,800 +1,811 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Prediction Study</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-<style>
-.progress-track { height: 1px; background: var(--border); margin-bottom: 48px; }
-.progress-fill { height: 1px; background: var(--gold); transition: width 0.7s ease; width: 0%; }
+from flask import Flask, render_template, request, jsonify
+from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, Text
+from sqlalchemy.orm import sessionmaker, declarative_base
+from datetime import datetime
+import numpy as np
+import pandas as pd
+from hmmlearn.hmm import GaussianHMM
+from scipy import stats
+import random
+import json
+import os
 
-.stimulus {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 1px; background: var(--border-gold);
-  border: 0.5px solid var(--border-gold); margin-bottom: 36px;
-}
-.stimulus-cell { background: var(--bg-1); padding: 28px 24px; }
-.stimulus-label {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.25em;
-  color: var(--text-3); text-transform: uppercase; margin-bottom: 12px;
-}
-.stimulus-value {
-  font-family: var(--mono); font-size: 36px; font-weight: 300;
-  color: var(--text); letter-spacing: -0.02em; line-height: 1;
-}
-.stimulus-unit { font-family: var(--mono); font-size: 11px; color: var(--text-3); margin-top: 6px; }
+# ============================================
+# 1. DATABASE
+# ============================================
 
-.estimate-input {
-  width: 100%; background: transparent; border: none;
-  border-bottom: 0.5px solid var(--border);
-  color: var(--text); font-family: var(--mono); font-size: 32px;
-  font-weight: 300; padding: 16px 0; outline: none;
-  transition: border-color 0.2s; -moz-appearance: textfield;
-  letter-spacing: -0.01em;
-}
-.estimate-input:focus { border-color: var(--gold); }
-.estimate-input::placeholder { color: var(--text-3); }
-.estimate-input::-webkit-outer-spin-button,
-.estimate-input::-webkit-inner-spin-button { -webkit-appearance: none; }
-.input-unit {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em;
-  color: var(--text-3); text-transform: uppercase; margin-top: 8px;
-}
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///decisions.db")
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-.reasoning-toggle {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em;
-  color: var(--text-3); text-transform: uppercase; cursor: pointer;
-  background: none; border: none; padding: 0; margin-bottom: 16px;
-  display: block; transition: color 0.2s;
-}
-.reasoning-toggle:hover { color: var(--text-2); }
+engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
+DBSession = sessionmaker(bind=engine)
+Base = declarative_base()
 
-.error-msg {
-  font-family: var(--mono); font-size: 11px; color: #DC5050;
-  padding: 10px 14px; border-left: 2px solid #DC5050;
-  background: rgba(220,80,80,0.06); margin-bottom: 16px; display: none;
-}
+TOTAL_ROUNDS = 20
 
-.result-panel {
-  background: var(--bg-1); border: 0.5px solid var(--border-gold);
-  padding: 24px 28px; margin-bottom: 28px; display: none;
-}
-.result-row {
-  display: flex; justify-content: space-between; align-items: flex-start;
-  padding: 10px 0; border-bottom: 0.5px solid var(--border);
-}
-.result-row:last-child { border-bottom: none; }
-.result-row-label {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em;
-  color: var(--text-3); text-transform: uppercase; padding-top: 2px;
-}
-.result-row-val { font-family: var(--mono); font-size: 15px; color: var(--text); text-align: right; }
-.result-row-val.good { color: #2EAA6A; }
-.result-row-val.warn { color: var(--gold); }
-.result-row-val.bad  { color: #DC5050; }
-.result-mechanism {
-  font-family: var(--mono); font-size: 10px; color: var(--text-3);
-  margin-top: 3px; line-height: 1.5; text-align: right; max-width: 240px;
-}
 
-.intervention-strip {
-  border-left: 2px solid var(--border-gold); padding: 12px 16px;
-  margin-top: 16px; display: none; background: var(--gold-glow);
-}
-.intervention-label {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em;
-  color: var(--gold); text-transform: uppercase; margin-bottom: 6px;
-}
-.intervention-strip p {
-  font-family: var(--mono); font-size: 11px; color: var(--text);
-  line-height: 1.65; letter-spacing: 0.03em;
-}
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+    id           = Column(Integer, primary_key=True)
+    user_id      = Column(String(50), unique=True, nullable=False)
+    condition    = Column(String(20), default="control")
+    current_round = Column(Integer, default=1)
+    completed    = Column(Integer, default=0)
+    task_json    = Column(Text)
+    created_at   = Column(DateTime, default=datetime.utcnow)
+    updated_at   = Column(DateTime, default=datetime.utcnow)
 
-.reveal-card {
-  background: var(--bg-1); border: 0.5px solid var(--border);
-  padding: 16px 20px; margin-bottom: 6px;
-  display: flex; justify-content: space-between; align-items: center;
-}
-.reveal-card.accurate { border-color: rgba(46,170,106,0.35); }
-.reveal-card.close    { border-color: var(--border-gold); }
-.reveal-card.off      { border-color: rgba(220,80,80,0.3); }
-.reveal-round { font-family:var(--mono);font-size:9px;letter-spacing:0.2em;color:var(--text-3);text-transform:uppercase;min-width:56px; }
-.reveal-numbers { display:flex;gap:24px;align-items:center; }
-.reveal-num { text-align:right; }
-.reveal-num-label { font-family:var(--mono);font-size:9px;letter-spacing:0.1em;color:var(--text-3);text-transform:uppercase;margin-bottom:3px; }
-.reveal-num-val { font-family:var(--mono);font-size:15px;color:var(--text); }
-.reveal-delta { font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:2px; }
-.delta-good { background:rgba(46,170,106,0.1);color:#2EAA6A; }
-.delta-mid  { background:rgba(201,168,76,0.1);color:var(--gold); }
-.delta-bad  { background:rgba(220,80,80,0.1);color:#DC5050; }
 
-.metric-grid { display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);margin-bottom:2px; }
-.metric-cell { background:var(--bg-1);padding:20px 18px; }
-.metric-label { font-family:var(--mono);font-size:9px;letter-spacing:0.2em;color:var(--text-3);text-transform:uppercase;margin-bottom:8px; }
-.metric-value { font-family:var(--mono);font-size:22px;font-weight:300;color:var(--text); }
-.metric-value.good { color:#2EAA6A; }
-.metric-value.warn { color:var(--gold); }
-.metric-value.bad  { color:#DC5050; }
-.metric-sub { font-family:var(--mono);font-size:9px;color:var(--text-3);margin-top:5px;letter-spacing:0.05em;line-height:1.5; }
+class Decision(Base):
+    __tablename__ = "decisions"
+    id                 = Column(Integer, primary_key=True)
+    user_id            = Column(String(50), nullable=False)
+    condition          = Column(String(20), default="control")
+    round_number       = Column(Integer)
+    decision_value     = Column(Float, nullable=False)
+    reasoning          = Column(Text)
+    anchor             = Column(Float)
+    anchor_displacement = Column(Float)
+    signal             = Column(Float)
+    signal_noise       = Column(Float)
+    true_value         = Column(Float)
+    outcome_value      = Column(Float)
+    abi                = Column(Float)
+    relative_error     = Column(Float)
+    submitted_at       = Column(DateTime, default=datetime.utcnow)
 
-.abi-track { display:flex;align-items:center;gap:8px;margin-bottom:6px; }
-.abi-track-label { font-family:var(--mono);font-size:9px;color:var(--text-3);width:44px;text-align:right;flex-shrink:0; }
-.abi-track-bar { flex:1;height:2px;background:var(--border);position:relative; }
-.abi-track-fill { height:2px;position:absolute;top:0;left:0;transition:width 0.7s ease; }
-.abi-track-val { font-family:var(--mono);font-size:9px;color:var(--text-2);min-width:40px;flex-shrink:0; }
 
-.css-state { display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;padding:3px 7px;border-radius:2px;margin:2px; }
-.css-under    { background:rgba(46,170,106,0.1);color:#2EAA6A;border:0.5px solid rgba(46,170,106,0.3); }
-.css-moderate { background:rgba(201,168,76,0.08);color:var(--gold);border:0.5px solid var(--border-gold); }
-.css-over     { background:rgba(220,80,80,0.08);color:#DC5050;border:0.5px solid rgba(220,80,80,0.25); }
+class Intervention(Base):
+    __tablename__ = "interventions"
+    id           = Column(Integer, primary_key=True)
+    user_id      = Column(String(50))
+    round_number = Column(Integer)
+    action       = Column(String(50))
+    created_at   = Column(DateTime, default=datetime.utcnow)
 
-.insight-box { border-left:2px solid var(--gold);background:var(--gold-glow);padding:16px 20px;margin-bottom:20px; }
-.insight-box p { font-family:var(--mono);font-size:12px;color:var(--text);line-height:1.75;letter-spacing:0.03em; }
 
-.screen { display: none; }
-.screen.active { display: block; }
+class BanditState(Base):
+    __tablename__ = "bandit_states"
+    id          = Column(Integer, primary_key=True)
+    user_id     = Column(String(50), unique=True)
+    values_json = Column(Text)
+    counts_json = Column(Text)
 
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-.saving { animation: pulse 1s infinite; }
-</style>
-</head>
-<body>
-<div class="grain"></div>
-<header>
-  <div class="header-inner">
-    <span class="wordmark">Prediction Study</span>
-    <a href="/dashboard" class="nav-link" tabindex="-1">Research console →</a>
-  </div>
-</header>
 
-<div class="container">
+class EventLog(Base):
+    __tablename__ = "event_log"
+    id            = Column(Integer, primary_key=True)
+    user_id       = Column(String(50))
+    round_number  = Column(Integer)
+    event_type    = Column(String(50))
+    metadata_json = Column(Text)
+    created_at    = Column(DateTime, default=datetime.utcnow)
 
-  <!-- ══ SCREEN 0 — INTRO ══ -->
-  <div id="screen-intro" class="screen active">
-    <div class="fade-up">
-      <p class="eyebrow">Study instructions</p>
-      <h1>Market<br><em>forecasting</em></h1>
-    </div>
-    <div class="divider-gold"></div>
-    <div class="panel fade-up-2" style="margin-bottom:28px;">
-      <p style="font-size:15px;line-height:1.85;color:var(--text-2);">
-        You will make a series of market predictions. In each round you will see two figures — a recent reported figure and a market forecast — and submit your own prediction.
-      </p>
-      <div style="margin-top:24px;padding-top:24px;border-top:0.5px solid var(--border);">
-        <div style="display:flex;gap:14px;margin-bottom:12px;">
-          <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
-          <p style="font-size:14px;color:var(--text);line-height:1.6;"><strong>20 rounds</strong> in total</p>
-        </div>
-        <div style="display:flex;gap:14px;margin-bottom:12px;">
-          <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
-          <p style="font-size:14px;color:var(--text);line-height:1.6;"><strong>Full analysis</strong> of your predictions shown at the end</p>
-        </div>
-        <div style="display:flex;gap:14px;margin-bottom:12px;">
-          <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
-          <p style="font-size:14px;color:var(--text);line-height:1.6;">The market forecast <strong>may or may not be accurate</strong></p>
-        </div>
-        <div style="display:flex;gap:14px;">
-          <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
-          <p style="font-size:14px;color:var(--text);line-height:1.6;">Takes approximately <strong>8–10 minutes</strong></p>
-        </div>
-      </div>
-    </div>
-    <div class="field fade-up-3">
-      <label for="user_id_input">Participant ID</label>
-      <input type="text" id="user_id_input"
-             placeholder="Choose any identifier, e.g. falcon_42"
-             autocomplete="off" spellcheck="false">
-      <p style="font-family:var(--mono);font-size:10px;color:var(--text-3);margin-top:8px;letter-spacing:0.05em;">
-        No personal information is collected.
-      </p>
-    </div>
-    <div id="start-error" class="error-msg"></div>
-    <button class="btn btn-full fade-up-3" id="start-btn" onclick="startStudy()">Begin study →</button>
-  </div>
 
-  <!-- ══ SCREEN 1 — TASK ══ -->
-  <div id="screen-task" class="screen">
-    <div class="progress-track">
-      <div class="progress-fill" id="progress-fill"></div>
-    </div>
+Base.metadata.create_all(engine)
 
-    <div class="stimulus">
-      <div class="stimulus-cell">
-        <p class="stimulus-label">Last month's figure</p>
-        <p class="stimulus-value" id="disp-anchor">—</p>
-        <p class="stimulus-unit">thousands of users</p>
-      </div>
-      <div class="stimulus-cell">
-        <p class="stimulus-label">Market forecast</p>
-        <p class="stimulus-value" id="disp-signal">—</p>
-        <p class="stimulus-unit">thousands of users</p>
-      </div>
-    </div>
 
-    <!-- Result panel shown after submission, before next round -->
-    <div class="result-panel" id="result-panel">
-      <p class="eyebrow" style="margin-bottom:16px;">Round result</p>
-      <div class="result-row">
-        <span class="result-row-label">Your prediction</span>
-        <div>
-          <p class="result-row-val" id="res-estimate">—</p>
-        </div>
-      </div>
-      <div class="result-row">
-        <span class="result-row-label">Actual figure</span>
-        <div>
-          <p class="result-row-val good" id="res-actual">—</p>
-        </div>
-      </div>
-      <div class="result-row">
-        <span class="result-row-label">Prediction error</span>
-        <div>
-          <p class="result-row-val" id="res-error">—</p>
-          <p class="result-mechanism" id="res-mechanism"></p>
-        </div>
-      </div>
-      <div class="intervention-strip" id="intervention-strip">
-        <p class="intervention-label">System note</p>
-        <p id="intervention-text"></p>
-      </div>
-    </div>
+def migrate_schema():
+    import sqlalchemy as sa
+    cols = [
+        ("decisions",     "condition",            "VARCHAR(20) DEFAULT 'control'"),
+        ("decisions",     "round_number",         "INTEGER"),
+        ("decisions",     "anchor_displacement",  "FLOAT"),
+        ("decisions",     "signal_noise",         "FLOAT"),
+        ("decisions",     "abi",                  "FLOAT"),
+        ("decisions",     "relative_error",       "FLOAT"),
+        ("decisions",     "submitted_at",         "TIMESTAMP"),
+    ]
+    with engine.connect() as conn:
+        for table, col, typ in cols:
+            try:
+                conn.execute(sa.text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {typ}"))
+                conn.commit()
+            except Exception:
+                try: conn.rollback()
+                except Exception: pass
 
-    <form id="task-form" autocomplete="off">
-      <input type="hidden" name="user_id"     id="f-uid">
-      <input type="hidden" name="round_number" id="f-round">
+try:
+    migrate_schema()
+except Exception:
+    pass
 
-      <div class="field" id="input-section">
-        <label for="decision_value">Your prediction</label>
-        <input type="number" class="estimate-input" id="decision_value"
-               name="decision_value" placeholder="0.0"
-               step="0.1" min="0">
-        <p class="input-unit">thousands of users</p>
-      </div>
+# ============================================
+# 2. TASK GENERATOR
+# ============================================
 
-      <div class="field" style="margin-bottom:16px;" id="reasoning-section">
-        <button type="button" class="reasoning-toggle" id="reasoning-toggle"
-                onclick="toggleReasoning()">+ Add reasoning (optional)</button>
-        <textarea id="reasoning" name="reasoning"
-                  placeholder="Why did you choose this value?"
-                  style="display:none;margin-top:0;"></textarea>
-      </div>
+ANCHOR_DISPLACEMENTS = [-20, -12, -6, 6, 12, 20]
+SIGNAL_NOISE_TIERS   = [3, 6, 10]
 
-      <div class="error-msg" id="submit-error"></div>
 
-      <button type="submit" class="btn btn-full" id="submit-btn">
-        Submit prediction →
-      </button>
-      <button type="button" class="btn btn-full" id="next-btn"
-              style="display:none;margin-top:12px;" onclick="advanceRound()">
-        Next round →
-      </button>
-    </form>
-  </div>
-
-  <!-- ══ SCREEN 2 — BATCH REVEAL ══ -->
-  <div id="screen-reveal" class="screen">
-    <p class="eyebrow" id="reveal-eyebrow">Rounds 1–5 results</p>
-    <h1>Batch<br><em>results</em></h1>
-    <div class="divider-gold"></div>
-    <div id="reveal-cards" style="margin-bottom:32px;"></div>
-    <button class="btn btn-full" onclick="continueAfterReveal()">Continue →</button>
-  </div>
-
-  <!-- ══ SCREEN 3 — END ANALYSIS ══ -->
-  <div id="screen-analysis" class="screen">
-    <p class="eyebrow">Study complete</p>
-    <h1>Your decision<br><em>profile</em></h1>
-    <div class="divider-gold"></div>
-
-    <div class="metric-grid" style="margin-bottom:2px;">
-      <div class="metric-cell">
-        <p class="metric-label">Reference alignment</p>
-        <p class="metric-value" id="an-abi">—</p>
-        <p class="metric-sub" id="an-abi-sub">mean anchoring bias index</p>
-      </div>
-      <div class="metric-cell">
-        <p class="metric-label">Accuracy drift</p>
-        <p class="metric-value" id="an-cd">—</p>
-        <p class="metric-sub" id="an-cd-sub">error trend across rounds</p>
-      </div>
-    </div>
-    <div class="metric-grid" style="margin-bottom:2px;">
-      <div class="metric-cell">
-        <p class="metric-label">Forecast usage</p>
-        <p class="metric-value" id="an-sii">—</p>
-        <p class="metric-sub" id="an-sii-sub">signal independence index</p>
-      </div>
-      <div class="metric-cell">
-        <p class="metric-label">Pattern stability</p>
-        <p class="metric-value" id="an-tli">—</p>
-        <p class="metric-sub" id="an-tli-sub">trajectory lock-in</p>
-      </div>
-    </div>
-    <div class="metric-grid" style="margin-bottom:32px;">
-      <div class="metric-cell">
-        <p class="metric-label">Forecast sensitivity</p>
-        <p class="metric-value" id="an-be">—</p>
-        <p class="metric-sub" id="an-be-sub">bias elasticity</p>
-      </div>
-      <div class="metric-cell">
-        <p class="metric-label">Correction tendency</p>
-        <p class="metric-value" id="an-ads">—</p>
-        <p class="metric-sub" id="an-ads-sub">anchor displacement sensitivity</p>
-      </div>
-    </div>
-
-    <div style="margin-bottom:32px;">
-      <p class="eyebrow" style="margin-bottom:16px;">Reference alignment by round</p>
-      <div id="abi-tracks"></div>
-      <div style="display:flex;justify-content:space-between;margin-top:10px;">
-        <span style="font-family:var(--mono);font-size:9px;color:var(--text-3);">← independent</span>
-        <span style="font-family:var(--mono);font-size:9px;color:var(--text-3);">aligned →</span>
-      </div>
-    </div>
-
-    <div style="margin-bottom:32px;">
-      <p class="eyebrow" style="margin-bottom:12px;">Cognitive state sequence</p>
-      <div id="css-states" style="margin-bottom:8px;line-height:2;"></div>
-      <p class="metric-sub" id="css-summary"></p>
-    </div>
-
-    <div class="insight-box" style="margin-bottom:32px;">
-      <p id="insight-text">Analysing your decision pattern...</p>
-    </div>
-
-    <p style="font-family:var(--mono);font-size:11px;color:var(--text-3);line-height:1.8;letter-spacing:0.05em;margin-bottom:28px;">
-      Thank you for participating. Your responses have been recorded as part of an independent research program on sequential decision-making.
-    </p>
-    <a href="/dashboard" class="btn">Research console →</a>
-  </div>
-
-</div>
-
-<footer class="page-footer">
-  <p>Independent Research — Sequential Decision Study</p>
-</footer>
-
-<script>
-'use strict';
-
-// ── Constants
-const TOTAL_ROUNDS = 20;
-const REVEAL_EVERY = 5;
-const MAX_RETRIES  = 3;
-
-// ── Session state — all authoritative values come from backend
-let userId    = '';
-let condition = (new URLSearchParams(window.location.search)).get('condition') || 'control';
-let currentRound = 1;        // mirrors backend session.current_round
-let roundData = [];           // for end analysis
-let pendingRevealFrom = 1;
-let submitting = false;       // prevents concurrent submissions
-
-// ── Math helpers
-function safeNum(v, fb) { const n=Number(v); return(isNaN(n)||!isFinite(n))?(fb!==undefined?fb:0):n; }
-function arrMean(a) { if(!a||!a.length)return 0; return a.reduce((s,v)=>s+safeNum(v),0)/a.length; }
-function arrStd(a)  { if(!a||a.length<2)return 0; const m=arrMean(a); return Math.sqrt(a.reduce((s,v)=>s+Math.pow(safeNum(v)-m,2),0)/a.length); }
-function arrCorr(x,y) {
-  if(!x||!y||x.length<3||x.length!==y.length)return 0;
-  const mx=arrMean(x),my=arrMean(y);
-  let n=0,dx=0,dy=0;
-  for(let i=0;i<x.length;i++){const xi=safeNum(x[i])-mx,yi=safeNum(y[i])-my;n+=xi*yi;dx+=xi*xi;dy+=yi*yi;}
-  const d=Math.sqrt(dx*dy); return d>0.001?n/d:0;
-}
-function linSlope(x,y) {
-  if(!x||!y||x.length<3||x.length!==y.length)return 0;
-  const mx=arrMean(x),my=arrMean(y);
-  let n=0,d=0;
-  for(let i=0;i<x.length;i++){const xi=safeNum(x[i])-mx;n+=xi*(safeNum(y[i])-my);d+=xi*xi;}
-  return d>0.001?n/d:0;
-}
-function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
-function fmt(v,dec){return safeNum(v,0).toFixed(dec!==undefined?dec:3);}
-
-// ── UI helpers
-function show(id) {
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  window.scrollTo(0,0);
-}
-function showError(elId, msg) {
-  const el = document.getElementById(elId);
-  if(!el) return;
-  el.textContent = msg;
-  el.style.display = msg ? 'block' : 'none';
-}
-function setBtn(id, text, disabled) {
-  const b = document.getElementById(id);
-  if(!b) return;
-  b.textContent = text;
-  b.disabled = !!disabled;
-  if(disabled) b.classList.add('saving'); else b.classList.remove('saving');
-}
-
-// ── Fetch with retry
-async function fetchWithRetry(url, opts, retries) {
-  retries = retries || MAX_RETRIES;
-  for(let i=0; i<retries; i++) {
-    try {
-      const r = await fetch(url, opts);
-      if(!r.ok) throw new Error('HTTP ' + r.status);
-      return await r.json();
-    } catch(e) {
-      if(i === retries-1) throw e;
-      await new Promise(res => setTimeout(res, 800 * (i+1)));
-    }
-  }
-}
-
-// ── Start study — calls /start to initialize backend session
-async function startStudy() {
-  const raw = document.getElementById('user_id_input').value.trim();
-  if(!raw) { showError('start-error','Please enter a participant ID.'); document.getElementById('user_id_input').focus(); return; }
-  userId = raw;
-  showError('start-error','');
-  setBtn('start-btn','Starting…',true);
-
-  try {
-    const fd = new FormData();
-    fd.append('user_id', userId);
-    fd.append('condition', condition);
-    const data = await fetchWithRetry('/start', {method:'POST', body:fd});
-
-    if(data.status !== 'ok') {
-      showError('start-error', data.msg || 'Could not start session. Try again.');
-      setBtn('start-btn','Begin study →',false);
-      return;
+def generate_task():
+    true_value   = float(max(15.0, np.random.normal(50, 8)))
+    displacement = float(np.random.choice(ANCHOR_DISPLACEMENTS))
+    anchor       = true_value + displacement
+    noise_tier   = float(np.random.choice(SIGNAL_NOISE_TIERS))
+    signal       = float(true_value + np.random.normal(0, noise_tier))
+    return {
+        "true_value":          round(true_value, 3),
+        "anchor":              round(anchor, 2),
+        "anchor_displacement": round(displacement, 2),
+        "signal":              round(signal, 2),
+        "signal_noise":        round(noise_tier, 2)
     }
 
-    currentRound = data.current_round || 1;
-    renderTask(data.task, currentRound);
-    show('screen-task');
+# ============================================
+# 3. CORE METRICS  (DO NOT MODIFY)
+# ============================================
 
-  } catch(e) {
-    showError('start-error','Network error. Please check your connection and try again.');
-    setBtn('start-btn','Begin study →',false);
-  }
-}
+def compute_abi(estimate, true_value, anchor):
+    denom = anchor - true_value
+    if abs(denom) < 0.01:
+        return 0.0
+    return float((estimate - true_value) / denom)
 
-// ── Render a task onto the task screen
-function renderTask(task, round) {
-  document.getElementById('f-uid').value   = userId;
-  document.getElementById('f-round').value = round;
 
-  const pct = clamp(((round-1)/TOTAL_ROUNDS)*100,0,100);
-  document.getElementById('progress-fill').style.width = pct + '%';
+def compute_relative_error(estimate, true_value):
+    if abs(true_value) < 0.01:
+        return 0.0
+    return float(abs(estimate - true_value) / true_value)
 
-  document.getElementById('disp-anchor').textContent = safeNum(task.anchor,50).toFixed(1);
-  document.getElementById('disp-signal').textContent = safeNum(task.signal,50).toFixed(1);
 
-  // reset form state
-  document.getElementById('decision_value').value = '';
-  document.getElementById('reasoning').value = '';
-  document.getElementById('reasoning').style.display = 'none';
-  document.getElementById('reasoning-toggle').textContent = '+ Add reasoning (optional)';
-  document.getElementById('result-panel').style.display = 'none';
-  document.getElementById('intervention-strip').style.display = 'none';
-  document.getElementById('input-section').style.display = 'block';
-  document.getElementById('reasoning-section').style.display = 'block';
-  showError('submit-error','');
-  setBtn('submit-btn','Submit prediction →',false);
-  document.getElementById('next-btn').style.display = 'none';
+def get_user_df(user_id):
+    """Load completed decisions for a user into a DataFrame."""
+    with DBSession() as s:
+        rows = s.query(Decision).filter(
+            Decision.user_id == user_id,
+            Decision.outcome_value.isnot(None)
+        ).order_by(Decision.round_number).all()
+        data = [{
+            "round":              r.round_number or 0,
+            "estimate":          r.decision_value,
+            "true_value":        r.true_value or 0,
+            "anchor":            r.anchor or 50,
+            "anchor_displacement": r.anchor_displacement or 0,
+            "signal":            r.signal or 50,
+            "signal_noise":      r.signal_noise or 6,
+            "abi":               r.abi or 0,
+            "relative_error":    r.relative_error or 0,
+            "condition":         r.condition or "control"
+        } for r in rows]
+    return pd.DataFrame(data)
 
-  setTimeout(() => document.getElementById('decision_value').focus(), 80);
-}
 
-// ── Reasoning toggle
-function toggleReasoning() {
-  const t=document.getElementById('reasoning'),b=document.getElementById('reasoning-toggle');
-  const open = t.style.display==='none'||t.style.display==='';
-  t.style.display = open?'block':'none';
-  b.textContent   = open?'− Hide reasoning':'+ Add reasoning (optional)';
-  if(open) t.focus();
-}
+def compute_full_metrics(df):
+    if len(df) < 5:
+        return {"status": "insufficient_data", "n": len(df)}
 
-// ── Form submit
-document.getElementById('task-form').addEventListener('submit', async function(e) {
-  e.preventDefault();
-  if(submitting) return;
+    df  = df.copy().sort_values("round").reset_index(drop=True)
+    n   = len(df)
+    res = {"n": n}
 
-  // normalize input — handle locale comma as decimal separator
-  const rawVal = (document.getElementById('decision_value').value||'').trim().replace(',','.');
-  const val    = parseFloat(rawVal);
+    abi_vals = df["abi"].fillna(0).values
 
-  if(!rawVal || isNaN(val) || val < 0 || !isFinite(val)) {
-    showError('submit-error','Please enter a valid positive number.');
-    document.getElementById('decision_value').focus();
-    return;
-  }
+    res["mean_abi"] = round(float(np.mean(abi_vals)), 4)
+    res["std_abi"]  = round(float(np.std(abi_vals)),  4)
 
-  showError('submit-error','');
-  submitting = true;
-  setBtn('submit-btn','Saving…',true);
+    if n >= 10:
+        half      = n // 2
+        early_std = float(np.std(abi_vals[:half]))
+        late_std  = float(np.std(abi_vals[half:]))
+        res["tli"] = round(float(1 - (late_std / early_std)) if early_std > 0.01 else 0.0, 4)
+    else:
+        res["tli"] = None
 
-  const fd = new FormData(this);
-  // override decision_value with normalized value
-  fd.set('decision_value', val.toString());
+    disps = np.abs(df["anchor_displacement"].fillna(0).values)
+    if disps.std() > 0.01 and n >= 8:
+        slope, _, r, p, _ = stats.linregress(disps, abi_vals)
+        res["be_slope"] = round(float(slope), 4)
+        res["be_r"]     = round(float(r), 4)
+        res["be_p"]     = round(float(p), 4)
+    else:
+        res["be_slope"] = res["be_r"] = res["be_p"] = None
 
-  try {
-    const data = await fetchWithRetry('/submit', {method:'POST', body:fd});
+    sig_err = (df["signal"]   - df["true_value"]).fillna(0).values
+    est_err = (df["estimate"] - df["true_value"]).fillna(0).values
+    if np.std(sig_err) > 0.01 and np.std(est_err) > 0.01:
+        r_sig       = float(np.corrcoef(est_err, sig_err)[0, 1])
+        res["sii"]  = round(float(1 - abs(r_sig)), 4)
+        res["signal_correlation"] = round(r_sig, 4)
+    else:
+        res["sii"] = 1.0
+        res["signal_correlation"] = 0.0
 
-    if(data.status === 'resync') {
-      // backend corrected our round — resync silently
-      currentRound = data.current_round;
-      document.getElementById('f-round').value = currentRound;
-      if(data.task) renderTask(data.task, currentRound);
-      submitting = false;
-      setBtn('submit-btn','Submit prediction →',false);
-      return;
+    rounds     = df["round"].values.astype(float)
+    rel_errors = df["relative_error"].fillna(0).values
+    if n >= 8 and np.std(rounds) > 0:
+        slope, _, r, p, _ = stats.linregress(rounds, rel_errors)
+        res["cd_slope"] = round(float(slope), 6)
+        res["cd_r"]     = round(float(r), 4)
+        res["cd_p"]     = round(float(p), 4)
+    else:
+        res["cd_slope"] = None
+
+    res["mean_relative_error"] = round(float(np.mean(rel_errors)), 4)
+
+    adjustments = np.abs(df["estimate"].values - df["anchor"].fillna(50).values)
+    if np.std(disps) > 0.01 and np.std(adjustments) > 0.01:
+        res["ads"] = round(float(np.corrcoef(adjustments, disps)[0, 1]), 4)
+    else:
+        res["ads"] = None
+
+    if n >= 15:
+        try:
+            X     = abi_vals.reshape(-1, 1)
+            model = GaussianHMM(n_components=3, n_iter=200, random_state=42, covariance_type="full")
+            model.fit(X)
+            states       = model.predict(X)
+            means        = {s: float(model.means_[s][0]) for s in range(3)}
+            sorted_s     = sorted(means, key=means.get)
+            lmap         = {sorted_s[0]: "under_anchored", sorted_s[1]: "moderate", sorted_s[2]: "over_anchored"}
+            state_seq    = [lmap[s] for s in states]
+            res["css_terminal_state"]  = state_seq[-1]
+            res["css_transition_count"] = sum(1 for i in range(1, len(state_seq)) if state_seq[i] != state_seq[i-1])
+            res["css_state_sequence"]  = state_seq
+        except Exception:
+            res["css_terminal_state"]  = "unknown"
+            res["css_transition_count"] = None
+            res["css_state_sequence"]  = []
+    else:
+        res["css_terminal_state"]  = "insufficient_data"
+        res["css_transition_count"] = None
+        res["css_state_sequence"]  = []
+
+    res["round_abi"]            = [round(float(v), 3) for v in abi_vals]
+    res["round_relative_error"] = [round(float(v), 3) for v in rel_errors]
+    res["rounds"]               = [int(r) for r in df["round"].values]
+
+    return res
+
+# ============================================
+# 4. ROBUSTNESS SUITE  (separate layer — never touches core metrics)
+# ============================================
+
+def perturb_and_recompute(df, noise_scale=0.5, n_runs=50):
+    """
+    Sensitivity analysis via perturbation testing.
+    Adds Gaussian noise to anchor and signal, recomputes metrics n_runs times.
+    Returns std of key metrics across runs.
+    """
+    if len(df) < 5:
+        return {"status": "insufficient_data"}
+
+    abi_samples  = []
+    sii_samples  = []
+    tli_samples  = []
+
+    for _ in range(n_runs):
+        df_p = df.copy()
+        df_p["anchor"] = df_p["anchor"] + np.random.normal(0, noise_scale, len(df_p))
+        df_p["signal"] = df_p["signal"] + np.random.normal(0, noise_scale, len(df_p))
+
+        # Recompute ABI per row with perturbed anchor
+        df_p["abi"] = [
+            compute_abi(row["estimate"], row["true_value"], row["anchor"])
+            for _, row in df_p.iterrows()
+        ]
+        df_p["anchor_displacement"] = df_p["anchor"] - df_p["true_value"]
+
+        m = compute_full_metrics(df_p)
+        if m.get("status") == "insufficient_data":
+            continue
+        abi_samples.append(m.get("mean_abi", 0))
+        sii_samples.append(m.get("sii", 1))
+        if m.get("tli") is not None:
+            tli_samples.append(m["tli"])
+
+    if not abi_samples:
+        return {"status": "insufficient_data"}
+
+    abi_std = float(np.std(abi_samples))
+    result = {
+        "abi_stability_std": round(abi_std, 4),
+        "sii_stability_std": round(float(np.std(sii_samples)), 4) if sii_samples else None,
+        "tli_stability_std": round(float(np.std(tli_samples)), 4) if tli_samples else None,
+        "n_runs":            n_runs,
+        "noise_scale":       noise_scale,
+        # Stability label: std < 0.05 = high, < 0.15 = moderate, else low
+        "abi_stability_label": "high" if abi_std < 0.05 else ("moderate" if abi_std < 0.15 else "low")
+    }
+    return result
+
+
+def compute_split_half(df):
+    """
+    Split-half reliability.
+    Correlates ABI sequences from first and second halves of session.
+    """
+    if len(df) < 10:
+        return {"status": "insufficient_data"}
+
+    df   = df.copy().sort_values("round").reset_index(drop=True)
+    half = len(df) // 2
+    first_abi  = df["abi"].values[:half]
+    second_abi = df["abi"].values[half: half * 2]
+
+    min_len = min(len(first_abi), len(second_abi))
+    if min_len < 3:
+        return {"status": "insufficient_data"}
+
+    first_abi  = first_abi[:min_len]
+    second_abi = second_abi[:min_len]
+
+    if np.std(first_abi) < 0.01 or np.std(second_abi) < 0.01:
+        corr = 0.0
+    else:
+        corr = float(np.corrcoef(first_abi, second_abi)[0, 1])
+
+    # Spearman-Brown corrected reliability
+    sb_corr = (2 * corr) / (1 + corr) if (1 + corr) > 0.01 else 0.0
+
+    return {
+        "abi_split_half_corr":    round(corr, 4),
+        "spearman_brown_corr":    round(sb_corr, 4),
+        # Reliability label
+        "reliability_label": "high" if abs(sb_corr) > 0.7 else ("moderate" if abs(sb_corr) > 0.4 else "low")
     }
 
-    if(data.status === 'error') {
-      const msg = data.error_type === 'invalid_input'
-        ? 'Please enter a valid number.'
-        : (data.msg || 'Submission failed. Please try again.');
-      showError('submit-error', msg);
-      setBtn('submit-btn','Submit prediction →',false);
-      submitting = false;
-      return;
+
+def compute_internal_consistency(df):
+    """
+    Internal consistency checks.
+    Tests expected directional relationships between metrics.
+    """
+    if len(df) < 8:
+        return {"status": "insufficient_data"}
+
+    df = df.copy()
+    abi_vals     = df["abi"].fillna(0).values
+    rel_err_vals = df["relative_error"].fillna(0).values
+    adjustments  = np.abs(df["estimate"].values - df["anchor"].fillna(50).values)
+
+    sig_err = (df["signal"]   - df["true_value"]).fillna(0).values
+    est_err = (df["estimate"] - df["true_value"]).fillna(0).values
+
+    def safe_corr(a, b):
+        if np.std(a) < 0.01 or np.std(b) < 0.01:
+            return None
+        return round(float(np.corrcoef(a, b)[0, 1]), 4)
+
+    sii_vals = np.array([1 - abs(float(np.corrcoef(
+        est_err[:i+1], sig_err[:i+1])[0, 1]))
+        if i >= 2 and np.std(est_err[:i+1]) > 0.01 and np.std(sig_err[:i+1]) > 0.01
+        else np.nan for i in range(len(df))])
+    sii_vals = sii_vals[~np.isnan(sii_vals)]
+
+    result = {
+        # ABI vs relative_error: expect positive (more anchoring → more error)
+        "abi_relerr_corr": safe_corr(abi_vals, rel_err_vals),
+        # ABI vs adjustments: expect negative (more anchoring → less adjustment away)
+        "abi_adj_corr":    safe_corr(abi_vals, adjustments),
     }
 
-    if(data.status !== 'ok') {
-      showError('submit-error','Unexpected response. Please try again.');
-      setBtn('submit-btn','Submit prediction →',false);
-      submitting = false;
-      return;
+    if len(sii_vals) >= 5:
+        result["abi_sii_corr"] = safe_corr(abi_vals[:len(sii_vals)], sii_vals)
+    else:
+        result["abi_sii_corr"] = None
+
+    # Coherence flags
+    result["coherent_abi_relerr"] = (
+        result["abi_relerr_corr"] is not None and result["abi_relerr_corr"] > 0
+    )
+    result["coherent_abi_adj"] = (
+        result["abi_adj_corr"] is not None and result["abi_adj_corr"] < 0
+    )
+    result["n_coherent"] = sum([result["coherent_abi_relerr"], result["coherent_abi_adj"]])
+    result["consistency_label"] = (
+        "high" if result["n_coherent"] == 2 else
+        "moderate" if result["n_coherent"] == 1 else "low"
+    )
+
+    return result
+
+
+def compare_to_random(df):
+    """
+    Null model benchmarking.
+    Compares real user metrics to a random agent.
+    Random agent generates estimates uniformly around the mean anchor.
+    """
+    if len(df) < 5:
+        return {"status": "insufficient_data"}
+
+    df = df.copy()
+
+    # Build random agent dataframe
+    df_random = df.copy()
+    anchor_mean = df["anchor"].mean()
+    anchor_std  = df["anchor"].std() if df["anchor"].std() > 0 else 10
+    df_random["estimate"] = np.random.uniform(
+        anchor_mean - 2 * anchor_std,
+        anchor_mean + 2 * anchor_std,
+        len(df)
+    )
+    df_random["abi"] = [
+        compute_abi(row["estimate"], row["true_value"], row["anchor"])
+        for _, row in df_random.iterrows()
+    ]
+    df_random["relative_error"] = [
+        compute_relative_error(row["estimate"], row["true_value"])
+        for _, row in df_random.iterrows()
+    ]
+
+    real_metrics   = compute_full_metrics(df)
+    random_metrics = compute_full_metrics(df_random)
+
+    if real_metrics.get("status") == "insufficient_data":
+        return {"status": "insufficient_data"}
+
+    real_abi   = real_metrics.get("mean_abi", 0)
+    random_abi = random_metrics.get("mean_abi", 0)
+    separation = abs(real_abi - random_abi)
+
+    return {
+        "real_mean_abi":   round(real_abi, 4),
+        "random_mean_abi": round(random_abi, 4),
+        "separation":      round(separation, 4),
+        "real_mean_rel_error":   round(real_metrics.get("mean_relative_error", 0), 4),
+        "random_mean_rel_error": round(random_metrics.get("mean_relative_error", 0), 4),
+        # Meaningful if separation > 0.1
+        "meaningful_label": "yes" if separation > 0.1 else ("borderline" if separation > 0.05 else "no")
     }
 
-    // ── Successful submission
-    const estimate  = safeNum(data.your_estimate, val);
-    const actual    = safeNum(data.true_value, 0);
-    const error     = safeNum(data.error, 0);
-    const abi       = safeNum(data.abi, 0);
-    const relErr    = safeNum(data.relative_error, 0);
-    const anchor    = safeNum(document.getElementById('disp-anchor').textContent, 50);
-    const signal    = safeNum(document.getElementById('disp-signal').textContent, 50);
 
-    // Store for end analysis
-    roundData.push({
-      round: currentRound,
-      estimate, actual, abi, rel_error: relErr,
-      anchor, signal,
-      displacement: safeNum(data.next_task ? 0 : 0, 0) // displacement comes from task stored server-side
-    });
+def compute_robustness_suite(df):
+    """
+    Master robustness function.
+    Runs all four validation components.
+    Returns structured output with confidence signals for each metric.
+    """
+    sensitivity  = perturb_and_recompute(df, noise_scale=0.5, n_runs=50)
+    split_half   = compute_split_half(df)
+    consistency  = compute_internal_consistency(df)
+    null_model   = compare_to_random(df)
 
-    // Show result panel
-    const errPct  = actual > 0 ? (error/actual*100) : 0;
-    const errClass = errPct < 8 ? 'good' : errPct < 20 ? 'warn' : 'bad';
-    document.getElementById('res-estimate').textContent = estimate.toFixed(1) + 'k';
-    document.getElementById('res-actual').textContent   = actual.toFixed(1) + 'k';
-    document.getElementById('res-error').textContent    = error.toFixed(1) + 'k';
-    document.getElementById('res-error').className      = 'result-row-val ' + errClass;
-    document.getElementById('res-mechanism').textContent = data.abi_interpretation || '';
+    # Derive confidence labels for frontend display
+    abi_stability   = sensitivity.get("abi_stability_label", "unknown")
+    reliability     = split_half.get("reliability_label", "unknown")
+    consistency_lbl = consistency.get("consistency_label", "unknown")
+    meaningful      = null_model.get("meaningful_label", "unknown")
 
-    if(condition === 'treatment' && data.intervention) {
-      document.getElementById('intervention-text').textContent = data.intervention;
-      document.getElementById('intervention-strip').style.display = 'block';
+    # Overall confidence: all four must be high/yes for high confidence
+    high_count = sum([
+        abi_stability   == "high",
+        reliability     == "high",
+        consistency_lbl == "high",
+        meaningful      == "yes"
+    ])
+    overall = "high" if high_count >= 3 else ("moderate" if high_count >= 1 else "low")
+
+    return {
+        "sensitivity":         sensitivity,
+        "split_half":          split_half,
+        "internal_consistency": consistency,
+        "null_model":          null_model,
+        "confidence_summary": {
+            "abi_stability":    abi_stability,
+            "reliability":      reliability,
+            "consistency":      consistency_lbl,
+            "meaningful":       meaningful,
+            "overall":          overall
+        }
     }
 
-    document.getElementById('result-panel').style.display  = 'block';
-    document.getElementById('input-section').style.display  = 'none';
-    document.getElementById('reasoning-section').style.display = 'none';
-    document.getElementById('submit-btn').style.display     = 'none';
-    document.getElementById('next-btn').style.display       = 'block';
-    document.getElementById('next-btn').textContent         =
-      data.session_complete ? 'View analysis →' : 'Next round →';
+# ============================================
+# 5. BANDIT
+# ============================================
 
-    // Update internal state
-    currentRound = data.session_complete ? TOTAL_ROUNDS : data.next_round || (currentRound + 1);
+ACTIONS = ["debias", "slow", "reanchor", "ignore_signal"]
 
-    // Pre-load next task data into hidden fields if available
-    if(data.next_task) {
-      document.getElementById('f-round').value = data.next_round;
+FEEDBACK_TEXT = {
+    "debias":        "Your estimates are tracking the reference figure closely. Try forming your prediction before looking at the reference.",
+    "slow":          "Consider whether your first instinct is being influenced by the figures shown. Take a moment before committing.",
+    "reanchor":      "The reference figure may be misleading. Focus on what you know independently of the value shown.",
+    "ignore_signal": "The market forecast has been inaccurate in recent rounds. Weight it accordingly."
+}
+
+
+def load_bandit(user_id):
+    with DBSession() as s:
+        state = s.query(BanditState).filter_by(user_id=user_id).first()
+        if state:
+            return {"values": json.loads(state.values_json), "counts": json.loads(state.counts_json)}
+    return {"values": {a: 0.0 for a in ACTIONS}, "counts": {a: 1 for a in ACTIONS}}
+
+
+def save_bandit(user_id, bandit):
+    with DBSession() as s:
+        state = s.query(BanditState).filter_by(user_id=user_id).first()
+        if state:
+            state.values_json = json.dumps(bandit["values"])
+            state.counts_json = json.dumps(bandit["counts"])
+        else:
+            s.add(BanditState(user_id=user_id,
+                              values_json=json.dumps(bandit["values"]),
+                              counts_json=json.dumps(bandit["counts"])))
+        s.commit()
+
+
+def select_action(bandit, recent_abi_mean):
+    if recent_abi_mean > 0.5 and random.random() < 0.6:
+        return random.choice(["debias", "reanchor"])
+    if recent_abi_mean < 0.2 and random.random() < 0.4:
+        return "ignore_signal"
+    if random.random() < 0.25:
+        return random.choice(ACTIONS)
+    return max(bandit["values"], key=bandit["values"].get)
+
+
+def update_bandit(bandit, action, reward):
+    bandit["counts"][action] += 1
+    bandit["values"][action] += (reward - bandit["values"][action]) / bandit["counts"][action]
+    return bandit
+
+# ============================================
+# 6. SESSION MANAGEMENT
+# ============================================
+
+def get_or_create_session(user_id, condition):
+    with DBSession() as s:
+        us = s.query(UserSession).filter_by(user_id=user_id).first()
+        if not us:
+            task = generate_task()
+            us = UserSession(user_id=user_id, condition=condition,
+                             current_round=1, completed=0,
+                             task_json=json.dumps(task))
+            s.add(us)
+            s.commit()
+            return {"user_id": user_id, "condition": condition,
+                    "current_round": 1, "completed": 0, "task": task}
+        return {"user_id": us.user_id, "condition": us.condition,
+                "current_round": us.current_round, "completed": us.completed,
+                "task": json.loads(us.task_json) if us.task_json else generate_task()}
+
+
+def log_event(user_id, round_number, event_type, metadata=None):
+    try:
+        with DBSession() as s:
+            s.add(EventLog(user_id=user_id, round_number=round_number,
+                           event_type=event_type,
+                           metadata_json=json.dumps(metadata or {})))
+            s.commit()
+    except Exception:
+        pass
+
+# ============================================
+# 7. FLASK APP
+# ============================================
+
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "changeme-set-in-env")
+
+
+@app.route("/", methods=["GET"])
+def index():
+    return render_template("index.html")
+
+
+@app.route("/start", methods=["POST"])
+def start():
+    try:
+        user_id   = request.form.get("user_id", "").strip()
+        condition = request.form.get("condition", "control")
+        if not user_id:
+            return jsonify({"status": "error", "msg": "Participant ID required"}), 400
+        sd = get_or_create_session(user_id, condition)
+        log_event(user_id, sd["current_round"], "session_start")
+        return jsonify({"status": "ok", "current_round": sd["current_round"],
+                        "total_rounds": TOTAL_ROUNDS, "condition": sd["condition"],
+                        "task": sd["task"], "completed": sd["completed"]})
+    except Exception as e:
+        return jsonify({"status": "error", "msg": str(e)}), 500
+
+
+@app.route("/submit", methods=["POST"])
+def submit():
+    user_id = request.form.get("user_id", "").strip()
+    if not user_id:
+        return jsonify({"status": "error", "msg": "Missing user_id"}), 400
+
+    raw_val = request.form.get("decision_value", "").strip().replace(",", ".")
+    try:
+        decision_value = float(raw_val)
+        if decision_value < 0 or not np.isfinite(decision_value):
+            raise ValueError("out of range")
+    except (ValueError, TypeError):
+        log_event(user_id, None, "validation_error", {"raw": raw_val})
+        return jsonify({"status": "error", "error_type": "invalid_input",
+                        "msg": "Please enter a valid positive number"}), 400
+
+    reasoning = request.form.get("reasoning", "")
+
+    try:
+        # ── Single session block — no nested sessions
+        with DBSession() as s:
+            us = s.query(UserSession).filter_by(user_id=user_id).first()
+            if not us:
+                return jsonify({"status": "error", "error_type": "no_session",
+                                "msg": "Session not found. Please restart."}), 400
+
+            submitted_round = int(request.form.get("round_number", us.current_round))
+            expected_round  = us.current_round
+
+            if submitted_round != expected_round:
+                log_event(user_id, submitted_round, "round_mismatch",
+                          {"submitted": submitted_round, "expected": expected_round})
+                task = json.loads(us.task_json) if us.task_json else generate_task()
+                return jsonify({"status": "resync", "current_round": expected_round, "task": task})
+
+            # Load task from backend — never trust frontend values
+            task             = json.loads(us.task_json) if us.task_json else generate_task()
+            true_value       = task["true_value"]
+            anchor           = task["anchor"]
+            anchor_disp      = task["anchor_displacement"]
+            signal           = task["signal"]
+            signal_noise     = task["signal_noise"]
+
+            abi       = compute_abi(decision_value, true_value, anchor)
+            rel_error = compute_relative_error(decision_value, true_value)
+
+            d = Decision(
+                user_id=user_id, condition=us.condition,
+                round_number=expected_round, decision_value=decision_value,
+                reasoning=reasoning, anchor=anchor,
+                anchor_displacement=anchor_disp, signal=signal,
+                signal_noise=signal_noise, true_value=true_value,
+                outcome_value=true_value, abi=abi, relative_error=rel_error
+            )
+            s.add(d)
+
+            # ── Bandit intervention (uses already-committed rows only)
+            intervention    = None
+            recent_abi_mean = 0.0
+            if us.condition == "treatment" and expected_round >= 5:
+                # Query previous decisions inside same session — avoids nested DBSession
+                prev = s.query(Decision).filter(
+                    Decision.user_id == user_id,
+                    Decision.abi.isnot(None)
+                ).order_by(Decision.round_number.desc()).limit(5).all()
+                if len(prev) >= 4:
+                    recent_abi_mean = float(np.mean([p.abi for p in prev]))
+                    recent_errors   = [p.relative_error for p in prev if p.relative_error is not None]
+                    bandit          = load_bandit(user_id)
+                    action          = select_action(bandit, recent_abi_mean)
+                    reward          = float(np.mean(recent_errors[:-3]) - np.mean(recent_errors[-3:])) \
+                        if len(recent_errors) > 3 else 0.0
+                    bandit          = update_bandit(bandit, action, reward)
+                    save_bandit(user_id, bandit)
+                    s.add(Intervention(user_id=user_id, round_number=expected_round, action=action))
+                    intervention = FEEDBACK_TEXT[action]
+
+            is_last  = (expected_round >= TOTAL_ROUNDS)
+            next_task = None
+            if is_last:
+                us.current_round = TOTAL_ROUNDS
+                us.completed     = 1
+                us.task_json     = None
+            else:
+                next_task            = generate_task()
+                us.current_round     = expected_round + 1
+                us.task_json         = json.dumps(next_task)
+                us.updated_at        = datetime.utcnow()
+
+            s.commit()
+            decision_id = d.id
+
+        log_event(user_id, expected_round, "submission_success")
+
+        abi_interp = (
+            "Your estimate was close to the reference figure — possible anchoring effect." if abi > 0.6 else
+            "Your estimate moved away from the reference figure." if abi < 0.1 else
+            "Your estimate showed moderate reference influence."
+        )
+
+        return jsonify({
+            "status":           "ok",
+            "decision_id":      decision_id,
+            "round_completed":  expected_round,
+            "true_value":       round(true_value, 2),
+            "your_estimate":    round(decision_value, 2),
+            "error":            round(abs(decision_value - true_value), 2),
+            "abi":              round(abi, 3),
+            "relative_error":   round(rel_error, 3),
+            "abi_interpretation": abi_interp,
+            "intervention":     intervention,
+            "session_complete": is_last,
+            "next_round":       None if is_last else expected_round + 1,
+            "next_task":        next_task
+        })
+
+    except Exception as e:
+        log_event(user_id, None, "submission_failure", {"error": str(e)})
+        return jsonify({"status": "error", "error_type": "server_error",
+                        "msg": "Something went wrong. Please try again."}), 500
+
+
+@app.route("/session_metrics/<user_id>", methods=["GET"])
+def session_metrics(user_id):
+    df = get_user_df(user_id)
+    if df.empty:
+        return jsonify({"status": "no_data"})
+    return jsonify(compute_full_metrics(df))
+
+
+@app.route("/robustness/<user_id>", methods=["GET"])
+def robustness(user_id):
+    """On-demand robustness suite — never called during task flow."""
+    df = get_user_df(user_id)
+    if df.empty or len(df) < 5:
+        return jsonify({"status": "insufficient_data", "n": len(df)})
+    result = compute_robustness_suite(df)
+    log_event(user_id, None, "robustness_computed", {"n": len(df)})
+    return jsonify(result)
+
+
+@app.route("/dashboard")
+def dashboard():
+    with DBSession() as s:
+        rows = s.query(Decision).order_by(Decision.submitted_at.desc()).all()
+        decisions = [{
+            "id":             d.id,
+            "user_id":        d.user_id,
+            "condition":      d.condition or "control",
+            "round_number":   d.round_number,
+            "decision_value": d.decision_value,
+            "anchor":         d.anchor,
+            "signal":         d.signal,
+            "true_value":     d.true_value,
+            "outcome_value":  d.outcome_value,
+            "abi":            round(d.abi, 3) if d.abi is not None else None,
+            "relative_error": round(d.relative_error, 3) if d.relative_error is not None else None,
+            "timestamp":      d.submitted_at.strftime("%Y-%m-%d %H:%M") if d.submitted_at else ""
+        } for d in rows]
+        sessions = s.query(UserSession).order_by(UserSession.created_at.desc()).all()
+        session_data = [{
+            "user_id":       ss.user_id,
+            "condition":     ss.condition,
+            "current_round": ss.current_round,
+            "completed":     ss.completed
+        } for ss in sessions]
+    return render_template("dashboard.html", decisions=decisions, sessions=session_data)
+
+
+@app.route("/api/population_metrics", methods=["GET"])
+def api_population_metrics():
+    with DBSession() as s:
+        rows = s.query(Decision).filter(
+            Decision.outcome_value.isnot(None),
+            Decision.abi.isnot(None)
+        ).all()
+        if not rows:
+            return jsonify({"status": "no_data"})
+        all_abi     = [r.abi for r in rows]
+        all_rel_err = [r.relative_error for r in rows if r.relative_error is not None]
+        user_ids    = list(set(r.user_id for r in rows))
+
+    pop = {
+        "n_users":                len(user_ids),
+        "n_decisions":            len(all_abi),
+        "population_mean_abi":    round(float(np.mean(all_abi)), 4),
+        "population_std_abi":     round(float(np.std(all_abi)),  4),
+        "population_mean_rel_error": round(float(np.mean(all_rel_err)), 4) if all_rel_err else None
     }
+    user_abis = []
+    for uid in user_ids:
+        df = get_user_df(uid)
+        if len(df) >= 5:
+            user_abis.append(float(df["abi"].mean()))
+    if user_abis:
+        pop["individual_abi_variance"] = round(float(np.var(user_abis)), 4)
+        pop["individual_abi_range"]    = [round(min(user_abis), 4), round(max(user_abis), 4)]
+    return jsonify(pop)
 
-    submitting = false;
 
-  } catch(e) {
-    showError('submit-error','Network error. Please try again.');
-    setBtn('submit-btn','Submit prediction →',false);
-    submitting = false;
-  }
-});
+# ============================================
+# 8. RUN
+# ============================================
 
-// ── Advance to next round or analysis
-function advanceRound() {
-  const isLast = (currentRound > TOTAL_ROUNDS) ||
-    document.getElementById('next-btn').textContent.includes('analysis');
-
-  if(isLast) {
-    showFinalAnalysis();
-    return;
-  }
-
-  // Batch reveal every 5 rounds
-  const completedRound = currentRound - 1;
-  const isReveal = (completedRound % REVEAL_EVERY === 0) && completedRound > 0;
-
-  if(isReveal) {
-    showBatchReveal(completedRound);
-  } else {
-    loadNextRound();
-  }
-}
-
-function loadNextRound() {
-  // Task is already stored on backend — just re-render with next_round data
-  // We need to fetch the current task for this round
-  setBtn('next-btn','Loading…',true);
-  const fd = new FormData();
-  fd.append('user_id', userId);
-  fd.append('condition', condition);
-
-  // Call /start to resume and get current task
-  fetchWithRetry('/start', {method:'POST', body:fd})
-    .then(data => {
-      if(data.status === 'ok' && data.task) {
-        renderTask(data.task, data.current_round);
-        currentRound = data.current_round;
-      }
-    })
-    .catch(() => {
-      setBtn('next-btn','Next round →', false);
-    });
-}
-
-// ── Batch reveal
-function showBatchReveal(upToRound) {
-  const from  = pendingRevealFrom;
-  const to    = upToRound;
-  const batch = roundData.filter(r => r.round >= from && r.round <= to);
-
-  document.getElementById('reveal-eyebrow').textContent = 'Rounds ' + from + '–' + to + ' results';
-  const container = document.getElementById('reveal-cards');
-  container.innerHTML = '';
-
-  batch.forEach(r => {
-    const estimate = safeNum(r.estimate,0);
-    const actual   = safeNum(r.actual,0);
-    const delta    = estimate - actual;
-    const errPct   = actual !== 0 ? Math.abs(delta/actual)*100 : 0;
-    const cardCls  = errPct < 8 ? 'accurate' : errPct < 20 ? 'close' : 'off';
-    const deltaCls = errPct < 8 ? 'delta-good' : errPct < 20 ? 'delta-mid' : 'delta-bad';
-    const sign     = delta >= 0 ? '+' : '';
-    container.innerHTML += `
-      <div class="reveal-card ${cardCls}">
-        <span class="reveal-round">Round ${r.round}</span>
-        <div class="reveal-numbers">
-          <div class="reveal-num">
-            <p class="reveal-num-label">Your prediction</p>
-            <p class="reveal-num-val">${estimate.toFixed(1)}k</p>
-          </div>
-          <div class="reveal-num">
-            <p class="reveal-num-label">Actual figure</p>
-            <p class="reveal-num-val">${actual.toFixed(1)}k</p>
-          </div>
-          <span class="reveal-delta ${deltaCls}">${sign}${delta.toFixed(1)}k</span>
-        </div>
-      </div>`;
-  });
-
-  pendingRevealFrom = to + 1;
-  show('screen-reveal');
-}
-
-function continueAfterReveal() {
-  show('screen-task');
-  loadNextRound();
-}
-
-// ── Metric helper
-function setMetric(id, subId, value, cls, subText) {
-  const el=document.getElementById(id); if(el){el.textContent=value;el.className='metric-value '+cls;}
-  const s=document.getElementById(subId); if(s)s.textContent=subText;
-}
-
-// ── Final analysis
-function showFinalAnalysis() {
-  const n = roundData.length;
-  if(n === 0){ show('screen-analysis'); return; }
-
-  const abis      = roundData.map(r=>safeNum(r.abi,0));
-  const relErrors = roundData.map(r=>safeNum(r.rel_error,0));
-  const estimates = roundData.map(r=>safeNum(r.estimate,0));
-  const actuals   = roundData.map(r=>safeNum(r.actual,0));
-  const signals   = roundData.map(r=>safeNum(r.signal,0));
-  const anchors   = roundData.map(r=>safeNum(r.anchor,50));
-  const rounds    = roundData.map(r=>safeNum(r.round,0));
-
-  // ABI
-  const meanAbi = arrMean(abis);
-  setMetric('an-abi','an-abi-sub',fmt(meanAbi,3),
-    Math.abs(meanAbi)<0.25?'good':Math.abs(meanAbi)<0.55?'warn':'bad',
-    meanAbi>0.55?'strong reference alignment detected':meanAbi<0.15?'largely independent of reference':'moderate reference influence');
-
-  // CD
-  const cdSlope = linSlope(rounds, relErrors);
-  setMetric('an-cd','an-cd-sub',
-    cdSlope<-0.001?'↓ improving':cdSlope>0.001?'↑ worsening':'→ stable',
-    cdSlope<-0.001?'good':cdSlope>0.001?'bad':'warn',
-    cdSlope<-0.001?'error decreased across rounds':cdSlope>0.001?'error increased across rounds':'no directional trend detected');
-
-  // SII
-  const estErr=estimates.map((e,i)=>e-actuals[i]);
-  const sigErr=signals.map((s,i)=>s-actuals[i]);
-  const rSig=(arrStd(sigErr)>0.01&&arrStd(estErr)>0.01)?arrCorr(estErr,sigErr):0;
-  const sii=clamp(1-Math.abs(rSig),0,1);
-  setMetric('an-sii','an-sii-sub',fmt(sii,3),
-    sii>0.7?'good':sii>0.4?'warn':'bad',
-    sii>0.7?'predictions largely independent of forecast':sii>0.4?'moderate forecast influence':'predictions closely tracked the forecast');
-
-  // TLI
-  const half=Math.max(1,Math.floor(n/2));
-  const earlyStd=arrStd(abis.slice(0,half)), lateStd=arrStd(abis.slice(half));
-  const tli=earlyStd>0.01?clamp(1-(lateStd/earlyStd),-2,2):0;
-  setMetric('an-tli','an-tli-sub',fmt(tli,3),
-    tli>0.4?'warn':Math.abs(tli)<0.15?'good':'warn',
-    tli>0.4?'bias pattern stabilised (lock-in detected)':tli<-0.2?'bias pattern became more variable':'no significant lock-in detected');
-
-  // BE — use anchors as proxy for displacement since displacement stored server-side
-  const disps = anchors.map((a,i)=>Math.abs(a-actuals[i]));
-  const beSlope=arrStd(disps)>0.01?linSlope(disps,abis):0;
-  setMetric('an-be','an-be-sub',fmt(beSlope,4),
-    Math.abs(beSlope)<0.005?'good':Math.abs(beSlope)<0.015?'warn':'bad',
-    beSlope>0.015?'stronger anchoring with more extreme references':beSlope<-0.005?'greater pushback against extreme references':'anchoring not sensitive to reference magnitude');
-
-  // ADS
-  const adjustments=roundData.map(r=>Math.abs(safeNum(r.estimate,0)-safeNum(r.anchor,50)));
-  const ads=(arrStd(disps)>0.01&&arrStd(adjustments)>0.01)?arrCorr(adjustments,disps):0;
-  setMetric('an-ads','an-ads-sub',fmt(ads,3),
-    ads>0.3?'good':ads>0?'warn':'bad',
-    ads>0.3?'adjusts more against extreme references':ads<0?'less adjustment against extreme references':'adjustment not sensitive to reference extremity');
-
-  // ABI trajectory bars
-  const tc=document.getElementById('abi-tracks'); tc.innerHTML='';
-  [{label:'1–5',vals:abis.slice(0,5)},{label:'6–10',vals:abis.slice(5,10)},
-   {label:'11–15',vals:abis.slice(10,15)},{label:'16–20',vals:abis.slice(15,20)}].forEach(g=>{
-    if(!g.vals.length)return;
-    const avg=arrMean(g.vals);
-    const pct=clamp(((avg+1)/3)*100,0,100);
-    const color=Math.abs(avg)<0.25?'#2EAA6A':avg<0.55?'#C9A84C':'#DC5050';
-    tc.innerHTML+=`<div class="abi-track"><span class="abi-track-label">${g.label}</span><div class="abi-track-bar"><div class="abi-track-fill" style="width:${pct.toFixed(1)}%;background:${color};"></div></div><span class="abi-track-val">${avg.toFixed(2)}</span></div>`;
-  });
-
-  // CSS state sequence
-  const cc=document.getElementById('css-states'); cc.innerHTML='';
-  let transitions=0,prevState=null;
-  abis.forEach(a=>{
-    const state=a<0.2?'under':a<0.6?'moderate':'over';
-    const label=a<0.2?'independent':a<0.6?'moderate':'aligned';
-    if(prevState!==null&&prevState!==state)transitions++;
-    prevState=state;
-    cc.innerHTML+=`<span class="css-state css-${state}">${label}</span>`;
-  });
-  const cs=document.getElementById('css-summary');
-  if(cs) cs.textContent=transitions+' state transition'+(transitions!==1?'s':'')+' across '+n+' rounds — '+(transitions<=3?'stable pattern':transitions<=7?'moderate variability':'high variability');
-
-  // Insight
-  let insight='';
-  if(Math.abs(meanAbi)>0.55&&tli>0.3)
-    insight='Your predictions showed strong and stable alignment with the reference figure. The pattern locked in across rounds — your estimates consistently tracked the reference regardless of how far it was from the actual outcome.';
-  else if(Math.abs(meanAbi)<0.2&&sii>0.6)
-    insight='Your predictions were largely independent of both the reference figure and the market forecast. You appear to have formed judgments from your own baseline rather than the provided values.';
-  else if(beSlope>0.015)
-    insight='Your alignment with the reference figure increased when the reference was more extreme. This pattern suggests susceptibility to strong anchors specifically, rather than uniform reference influence.';
-  else if(ads>0.35)
-    insight='You showed a tendency to adjust away from the reference figure when it was more extreme — a partial correction response. This is associated with awareness of reference unreliability.';
-  else if(cdSlope>0.001)
-    insight='Your prediction error increased across rounds. This may reflect accumulated uncertainty, strategy shifts, or fatigue effects in later rounds.';
-  else if(cdSlope<-0.001)
-    insight='Your accuracy improved across rounds. Error in the final block was meaningfully lower than in the opening rounds, suggesting adaptation or learning within the session.';
-  else
-    insight='Your predictions showed moderate reference influence with no strong directional trend across rounds. No single behavioral pattern dominated your decision profile.';
-  const ie=document.getElementById('insight-text'); if(ie)ie.textContent=insight;
-
-  show('screen-analysis');
-}
-</script>
-</body>
-</html>
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
