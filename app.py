@@ -136,6 +136,25 @@ def _setup_schema() -> None:
         ("decisions", "relative_error",       "DOUBLE PRECISION"),
         ("decisions", "submitted_at",         "TIMESTAMP"),
     ]
+    # Drop NOT NULL on legacy columns that no longer exist in the model
+    legacy_nullable = [
+        ("decisions", "confidence"),
+        ("decisions", "adjusted_estimate"),
+        ("decisions", "anchor_warning"),
+        ("decisions", "outcome_value"),
+    ]
+    with engine.connect() as conn:
+        for tbl, col in legacy_nullable:
+            try:
+                conn.execute(text(
+                    f"ALTER TABLE {tbl} ALTER COLUMN {col} DROP NOT NULL"
+                ))
+                conn.commit()
+                log.info("Dropped NOT NULL on %s.%s", tbl, col)
+            except Exception as exc:
+                log.debug("legacy_nullable skip %s.%s: %s", tbl, col, exc)
+                try: conn.rollback()
+                except Exception: pass
     with engine.connect() as conn:
         for tbl, col, typ in migrations:
             try:
