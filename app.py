@@ -542,6 +542,25 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "change-this-in-production")
 
 
+@app.before_request
+def _log_request():
+    log.info(">> %s %s | form=%s", request.method, request.path,
+             dict(request.form) if request.form else "{}")
+
+
+@app.after_request
+def _log_response(resp):
+    log.info("<< %s %s %d", request.method, request.path, resp.status_code)
+    return resp
+
+
+@app.errorhandler(Exception)
+def _handle_unhandled(exc):
+    log.exception("Unhandled exception on %s %s", request.method, request.path)
+    return jsonify({"status": "error", "error_type": "unhandled",
+                    "msg": str(exc)}), 500
+
+
 def _err(msg: str, code: int = 400, error_type: str = "error") -> tuple:
     log.warning("API error [%d] %s: %s", code, error_type, msg)
     return jsonify({"status": "error", "error_type": error_type, "msg": msg}), code
@@ -625,6 +644,9 @@ def submit():
                 _log_event(user_id, submitted_round, "round_mismatch",
                            {"submitted": submitted_round, "expected": expected_round})
                 task = json.loads(us.task_json) if us.task_json else generate_task()
+                if not us.task_json:
+                    us.task_json = json.dumps(task)
+                s.commit()
                 return jsonify({
                     "status":        "resync",
                     "current_round": expected_round,
