@@ -1,4 +1,4 @@
-# DDVM — Decision Dynamics & Value Mapping
+# DDVM — Decision Drift Validation Model
 
 ![Status](https://img.shields.io/badge/status-active%20development-orange)
 ![Stage](https://img.shields.io/badge/stage-experimental-blue)
@@ -9,7 +9,7 @@
 
 ## 📌 Overview
 
-DDVM (Decision Dynamics & Value Mapping) is an experimental system designed to study how human decisions evolve over time under changing context, uncertainty, and repeated exposure.
+DDVM (Decision Drift Validation Model) is an experimental system designed to study how human decisions evolve over time under changing context, uncertainty, and repeated exposure.
 
 Instead of analyzing isolated choices, DDVM focuses on **decision sequences as evolving systems**.
 
