@@ -135,6 +135,7 @@ def _setup_schema() -> None:
         ("decisions",     "abi",                 "DOUBLE PRECISION"),
         ("decisions",     "relative_error",      "DOUBLE PRECISION"),
         ("decisions",     "submitted_at",        "TIMESTAMP"),
+        ("interventions", "round_number",        "INTEGER"),
         ("interventions", "displayed",           "INTEGER DEFAULT 0"),
     ]
 
