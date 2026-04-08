@@ -137,6 +137,7 @@ def _setup_schema() -> None:
         ("decisions",     "submitted_at",        "TIMESTAMP"),
         ("interventions", "round_number",        "INTEGER"),
         ("interventions", "displayed",           "INTEGER DEFAULT 0"),
+        ("interventions", "created_at",           "TIMESTAMP"),
     ]
 
     with engine.connect() as conn:
