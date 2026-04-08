@@ -15,12 +15,11 @@ from flask import Flask, jsonify, render_template, request
 from hmmlearn.hmm import GaussianHMM
 from scipy import stats
 from sqlalchemy import (Column, DateTime, Float, Integer, String, Text,
-                        UniqueConstraint, create_engine, event, text)
+                        create_engine, text)
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.pool import NullPool
 
-# ── Logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -35,27 +34,21 @@ log = logging.getLogger("ddvm")
 _raw_db = os.environ.get("DATABASE_URL", "sqlite:///decisions.db")
 DATABASE_URL = (
     _raw_db.replace("postgres://", "postgresql://", 1)
-    if _raw_db.startswith("postgres://")
-    else _raw_db
+    if _raw_db.startswith("postgres://") else _raw_db
 )
 IS_POSTGRES = DATABASE_URL.startswith("postgresql")
-
 log.info("DATABASE_URL prefix: %s", DATABASE_URL[:30])
 
 _engine_kwargs: dict = {"echo": False, "pool_pre_ping": True}
 if IS_POSTGRES:
-    # NullPool: no connection reuse between requests.
-    # Eliminates connection-state bugs across Gunicorn workers.
     _engine_kwargs["poolclass"] = NullPool
 
 engine = create_engine(DATABASE_URL, **_engine_kwargs)
-# SQLAlchemy 2.0 — do NOT use bind= kwarg on sessionmaker
 DBSession = sessionmaker(engine, expire_on_commit=False)
 Base = declarative_base()
 
 TOTAL_ROUNDS = 20
 
-# ── Models ───────────────────────────────────────────────────
 
 class UserSession(Base):
     __tablename__ = "user_sessions"
@@ -94,6 +87,7 @@ class Intervention(Base):
     user_id      = Column(String(50))
     round_number = Column(Integer)
     action       = Column(String(50))
+    displayed    = Column(Integer, default=0)   # 1 if shown to user
     created_at   = Column(DateTime, default=datetime.utcnow)
 
 
@@ -115,8 +109,6 @@ class EventLog(Base):
     created_at    = Column(DateTime, default=datetime.utcnow)
 
 
-# ── Schema setup ─────────────────────────────────────────────
-
 def _setup_schema() -> None:
     try:
         Base.metadata.create_all(engine)
@@ -127,47 +119,44 @@ def _setup_schema() -> None:
     if not IS_POSTGRES:
         return
 
-    migrations = [
-        ("decisions", "condition",            "VARCHAR(20) DEFAULT 'control'"),
-        ("decisions", "round_number",         "INTEGER"),
-        ("decisions", "anchor_displacement",  "DOUBLE PRECISION"),
-        ("decisions", "signal_noise",         "DOUBLE PRECISION"),
-        ("decisions", "abi",                  "DOUBLE PRECISION"),
-        ("decisions", "relative_error",       "DOUBLE PRECISION"),
-        ("decisions", "submitted_at",         "TIMESTAMP"),
-    ]
-    # Drop NOT NULL on legacy columns that no longer exist in the model
+    # Drop NOT NULL on legacy columns
     legacy_nullable = [
         ("decisions", "confidence"),
         ("decisions", "adjusted_estimate"),
         ("decisions", "anchor_warning"),
         ("decisions", "outcome_value"),
     ]
+    # Add new columns
+    migrations = [
+        ("decisions",     "condition",           "VARCHAR(20) DEFAULT 'control'"),
+        ("decisions",     "round_number",        "INTEGER"),
+        ("decisions",     "anchor_displacement", "DOUBLE PRECISION"),
+        ("decisions",     "signal_noise",        "DOUBLE PRECISION"),
+        ("decisions",     "abi",                 "DOUBLE PRECISION"),
+        ("decisions",     "relative_error",      "DOUBLE PRECISION"),
+        ("decisions",     "submitted_at",        "TIMESTAMP"),
+        ("interventions", "displayed",           "INTEGER DEFAULT 0"),
+    ]
+
     with engine.connect() as conn:
         for tbl, col in legacy_nullable:
             try:
-                conn.execute(text(
-                    f"ALTER TABLE {tbl} ALTER COLUMN {col} DROP NOT NULL"
-                ))
+                conn.execute(text(f"ALTER TABLE {tbl} ALTER COLUMN {col} DROP NOT NULL"))
                 conn.commit()
                 log.info("Dropped NOT NULL on %s.%s", tbl, col)
             except Exception as exc:
                 log.debug("legacy_nullable skip %s.%s: %s", tbl, col, exc)
                 try: conn.rollback()
                 except Exception: pass
-    with engine.connect() as conn:
+
         for tbl, col, typ in migrations:
             try:
-                conn.execute(text(
-                    f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS {col} {typ}"
-                ))
+                conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS {col} {typ}"))
                 conn.commit()
             except Exception as exc:
                 log.debug("Migration skip %s.%s: %s", tbl, col, exc)
-                try:
-                    conn.rollback()
-                except Exception:
-                    pass
+                try: conn.rollback()
+                except Exception: pass
 
 
 _setup_schema()
@@ -213,28 +202,22 @@ def get_user_df(user_id: str) -> pd.DataFrame:
     with DBSession() as s:
         rows = (
             s.query(Decision)
-            .filter(
-                Decision.user_id == user_id,
-                Decision.outcome_value.isnot(None),
-            )
+            .filter(Decision.user_id == user_id, Decision.outcome_value.isnot(None))
             .order_by(Decision.round_number)
             .all()
         )
-        data = [
-            {
-                "round":               r.round_number or 0,
-                "estimate":            r.decision_value or 0.0,
-                "true_value":          r.true_value or 0.0,
-                "anchor":              r.anchor or 50.0,
-                "anchor_displacement": r.anchor_displacement or 0.0,
-                "signal":              r.signal or 50.0,
-                "signal_noise":        r.signal_noise or 6.0,
-                "abi":                 r.abi or 0.0,
-                "relative_error":      r.relative_error or 0.0,
-                "condition":           r.condition or "control",
-            }
-            for r in rows
-        ]
+        data = [{
+            "round":               r.round_number or 0,
+            "estimate":            r.decision_value or 0.0,
+            "true_value":          r.true_value or 0.0,
+            "anchor":              r.anchor or 50.0,
+            "anchor_displacement": r.anchor_displacement or 0.0,
+            "signal":              r.signal or 50.0,
+            "signal_noise":        r.signal_noise or 6.0,
+            "abi":                 r.abi or 0.0,
+            "relative_error":      r.relative_error or 0.0,
+            "condition":           r.condition or "control",
+        } for r in rows]
     return pd.DataFrame(data)
 
 
@@ -247,14 +230,13 @@ def compute_full_metrics(df: pd.DataFrame) -> dict:
     res: dict = {"n": n}
 
     abi_vals = df["abi"].fillna(0.0).values
-
     res["mean_abi"] = round(float(np.mean(abi_vals)), 4)
     res["std_abi"]  = round(float(np.std(abi_vals)), 4)
 
     if n >= 10:
-        half      = n // 2
-        es        = float(np.std(abi_vals[:half]))
-        ls        = float(np.std(abi_vals[half:]))
+        half = n // 2
+        es   = float(np.std(abi_vals[:half]))
+        ls   = float(np.std(abi_vals[half:]))
         res["tli"] = round(float(1 - (ls / es)) if es > 0.01 else 0.0, 4)
     else:
         res["tli"] = None
@@ -326,7 +308,148 @@ def compute_full_metrics(df: pd.DataFrame) -> dict:
     return res
 
 # ============================================================
-# 4. ROBUSTNESS SUITE
+# 4. NEW METRICS: RABI + IES
+# ============================================================
+
+def compute_rabi(df: pd.DataFrame) -> dict:
+    """
+    Resource-Rational Agent Bias Index.
+    Measures individual-level anchoring susceptibility using:
+    - Bias magnitude: mean |ABI| across trials
+    - Directional consistency: how consistently bias points toward anchor
+    - Trial-level aggregation (not endpoint only)
+
+    Returns score in [0, 1] where 1 = maximum susceptibility.
+    Uses signal-adjusted baseline as normative proxy.
+    """
+    if len(df) < 5:
+        return {"status": "insufficient_data"}
+
+    df = df.copy().sort_values("round").reset_index(drop=True)
+    abi_vals = df["abi"].fillna(0.0).values
+
+    # Magnitude component: mean absolute ABI (how much anchoring on average)
+    magnitude = float(np.mean(np.abs(abi_vals)))
+
+    # Directional consistency: what fraction of rounds show bias toward anchor (ABI > 0)
+    direction_consistency = float(np.mean(abi_vals > 0))
+
+    # Normative proxy: compare to signal-following baseline
+    # If participant followed signal perfectly, their error relative to signal would be 0
+    sig_err = (df["signal"] - df["true_value"]).fillna(0.0).values
+    est_err = (df["estimate"] - df["true_value"]).fillna(0.0).values
+    # Signal-adjusted baseline: how much better/worse than pure signal following
+    if np.std(sig_err) > 0.01:
+        signal_r = float(np.corrcoef(est_err, sig_err)[0, 1])
+        signal_following = max(0.0, signal_r)  # 0 to 1
+    else:
+        signal_following = 0.5
+
+    # RABI composite: weight magnitude (0.5), direction (0.3), anchor-over-signal (0.2)
+    anchor_preference = max(0.0, magnitude - signal_following * 0.3)
+    rabi_raw = (0.5 * min(magnitude, 1.0) +
+                0.3 * direction_consistency +
+                0.2 * min(anchor_preference, 1.0))
+    rabi_score = round(float(np.clip(rabi_raw, 0, 1)), 4)
+
+    # Susceptibility band
+    if rabi_score < 0.25:
+        band = "low"
+        interpretation = "Your predictions showed low susceptibility to the reference figure. You adjusted substantially away from it in most rounds."
+    elif rabi_score < 0.55:
+        band = "moderate"
+        interpretation = "Your predictions showed moderate susceptibility to the reference figure. Some rounds tracked it closely, others did not."
+    else:
+        band = "high"
+        interpretation = "Your predictions showed high susceptibility to the reference figure. Estimates consistently stayed close to it across rounds."
+
+    return {
+        "rabi_score":           rabi_score,
+        "magnitude":            round(magnitude, 4),
+        "direction_consistency": round(direction_consistency, 4),
+        "susceptibility_band":  band,
+        "interpretation":       interpretation,
+    }
+
+
+def compute_ies(df: pd.DataFrame, interventions: list) -> dict:
+    """
+    Intervention Effectiveness Score.
+    Measures whether interventions changed behavior.
+
+    interventions: list of {round_number, action, displayed}
+    Compares relative_error before vs after each intervention point.
+    """
+    if len(df) < 5 or not interventions:
+        return {"status": "no_interventions", "ies_score": None,
+                "interpretation": "No interventions were recorded for this session."}
+
+    df = df.copy().sort_values("round").reset_index(drop=True)
+    re_vals = df["relative_error"].fillna(0.0).values
+    abi_vals = df["abi"].fillna(0.0).values
+    rounds = df["round"].values
+
+    # Find first displayed intervention round
+    displayed = [i for i in interventions if i.get("displayed", 0)]
+    if not displayed:
+        return {"status": "no_displayed_interventions", "ies_score": None,
+                "interpretation": "Interventions were computed but not shown to this participant (control condition)."}
+
+    first_intervention_round = min(i["round_number"] for i in displayed)
+
+    # Pre/post split at first intervention
+    pre_mask  = rounds < first_intervention_round
+    post_mask = rounds >= first_intervention_round
+
+    if pre_mask.sum() < 3 or post_mask.sum() < 3:
+        return {"status": "insufficient_data", "ies_score": None,
+                "interpretation": "Not enough data before and after intervention to measure impact."}
+
+    pre_err  = float(np.mean(re_vals[pre_mask]))
+    post_err = float(np.mean(re_vals[post_mask]))
+    pre_abi  = float(np.mean(np.abs(abi_vals[pre_mask])))
+    post_abi = float(np.mean(np.abs(abi_vals[post_mask])))
+
+    # Error reduction (positive = improvement)
+    err_reduction = pre_err - post_err
+    # Bias reduction (positive = less anchoring after intervention)
+    bias_reduction = pre_abi - post_abi
+
+    # IES: composite of error and bias improvement, normalized
+    err_magnitude  = max(abs(err_reduction) / max(pre_err, 0.01), 0)
+    bias_magnitude = max(abs(bias_reduction) / max(pre_abi, 0.01), 0)
+
+    direction_err  = 1.0 if err_reduction > 0 else -1.0
+    direction_bias = 1.0 if bias_reduction > 0 else -1.0
+
+    ies_raw = 0.6 * (err_magnitude * direction_err) + 0.4 * (bias_magnitude * direction_bias)
+    ies_score = round(float(np.clip(ies_raw, -1, 1)), 4)
+
+    # Interpretation
+    if ies_score > 0.15:
+        interp = f"Interventions had a meaningful positive effect. Prediction error decreased by {abs(err_reduction)*100:.1f}% and reference alignment reduced after intervention points."
+    elif ies_score > 0:
+        interp = f"Interventions had a small positive effect. Marginal improvements in accuracy and reference alignment were observed post-intervention."
+    elif ies_score > -0.1:
+        interp = "Interventions had minimal measurable impact on prediction behavior."
+    else:
+        interp = f"Prediction behavior worsened slightly after intervention points. This may reflect increased cognitive load from the feedback."
+
+    return {
+        "ies_score":              ies_score,
+        "pre_mean_error":         round(pre_err, 4),
+        "post_mean_error":        round(post_err, 4),
+        "error_reduction":        round(err_reduction, 4),
+        "pre_mean_abi":           round(pre_abi, 4),
+        "post_mean_abi":          round(post_abi, 4),
+        "bias_reduction":         round(bias_reduction, 4),
+        "first_intervention_round": first_intervention_round,
+        "n_interventions":        len(displayed),
+        "interpretation":         interp,
+    }
+
+# ============================================================
+# 5. ROBUSTNESS SUITE
 # ============================================================
 
 def _perturb_and_recompute(df: pd.DataFrame, noise_scale=0.5, n_runs=50) -> dict:
@@ -443,16 +566,16 @@ def compute_robustness_suite(df: pd.DataFrame) -> dict:
     }
 
 # ============================================================
-# 5. BANDIT
+# 6. BANDIT
 # ============================================================
 
 _ACTIONS = ["debias", "slow", "reanchor", "ignore_signal"]
 
 _FEEDBACK = {
-    "debias":        "Your estimates are tracking the reference figure closely. Try forming your prediction before looking at the reference.",
-    "slow":          "Consider whether your first instinct is being influenced by the figures shown. Take a moment before committing.",
-    "reanchor":      "The reference figure may be misleading. Focus on what you know independently of the value shown.",
-    "ignore_signal": "The market forecast has been inaccurate in recent rounds. Weight it accordingly.",
+    "debias":        "Your estimates have been staying close to the reference value. Before entering your next prediction, try forming your own estimate first — then check the reference.",
+    "slow":          "Consider whether the reference value is pulling your estimate. Take a moment to think independently before committing.",
+    "reanchor":      "The reference value shown may not reflect actual market conditions. Focus on what you know from the signal and your own judgment.",
+    "ignore_signal": "The market forecast has been less accurate in recent rounds. You may want to rely on it less heavily.",
 }
 
 
@@ -491,69 +614,49 @@ def _update_bandit(bandit: dict, action: str, reward: float) -> dict:
     return bandit
 
 # ============================================================
-# 6. SESSION HELPERS
+# 7. SESSION HELPERS
 # ============================================================
 
 def _upsert_session(s: Session, user_id: str, condition: str) -> "UserSession":
-    """
-    Get-or-create with race-condition safety.
-    Uses INSERT ... ON CONFLICT (Postgres) or plain get-or-create (SQLite).
-    Returns the committed UserSession row.
-    """
     us = s.query(UserSession).filter_by(user_id=user_id).first()
     if us:
         return us
-
     task = generate_task()
-    us   = UserSession(
-        user_id=user_id,
-        condition=condition,
-        current_round=1,
-        completed=0,
-        task_json=json.dumps(task),
-    )
+    us   = UserSession(user_id=user_id, condition=condition,
+                       current_round=1, completed=0, task_json=json.dumps(task))
     s.add(us)
     try:
-        s.flush()   # write to DB, detect constraint violations immediately
+        s.flush()
     except IntegrityError:
         s.rollback()
-        # Another request created the row between our SELECT and INSERT — fetch it
         us = s.query(UserSession).filter_by(user_id=user_id).first()
         if not us:
-            raise RuntimeError("session upsert failed — row missing after conflict")
+            raise RuntimeError("session upsert failed")
     return us
 
 
 def _log_event(user_id: str, round_number, event_type: str, meta: dict = None) -> None:
-    """Fire-and-forget. Never raises, never blocks main request."""
     try:
         with DBSession() as s:
-            s.add(EventLog(
-                user_id=user_id,
-                round_number=round_number,
-                event_type=event_type,
-                metadata_json=json.dumps(meta or {}),
-            ))
+            s.add(EventLog(user_id=user_id, round_number=round_number,
+                           event_type=event_type, metadata_json=json.dumps(meta or {})))
             s.commit()
     except Exception as exc:
         log.warning("EventLog write failed: %s", exc)
 
 # ============================================================
-# 7. FLASK APP
+# 8. FLASK APP
 # ============================================================
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "change-in-production")
 
 
-# ── Observability hooks ───────────────────────────────────────
-
 @app.before_request
 def _before():
     request._start_ts = time.monotonic()
-    # Use request.form carefully — Werkzeug caches the parse, safe to read here
     form_preview = {k: v for k, v in (request.form or {}).items()
-                    if k not in ("decision_value",)}  # don't log numeric answer
+                    if k not in ("decision_value",)}
     log.info("REQ  %s %s form=%s", request.method, request.path, form_preview)
 
 
@@ -576,8 +679,6 @@ def _err(msg: str, code: int = 400, error_type: str = "error"):
     return jsonify({"status": "error", "error_type": error_type, "msg": msg}), code
 
 
-# ── Health ────────────────────────────────────────────────────
-
 @app.route("/health")
 def health():
     try:
@@ -590,23 +691,17 @@ def health():
     return jsonify({"status": "ok", "db": db_ok, "ts": datetime.utcnow().isoformat()})
 
 
-# ── Index ─────────────────────────────────────────────────────
-
 @app.route("/")
 def index():
     return render_template("index.html")
 
 
-# ── Start / resume ────────────────────────────────────────────
-
 @app.route("/start", methods=["POST"])
 def start():
     user_id   = (request.form.get("user_id") or "").strip()
     condition = (request.form.get("condition") or "control").strip()
-
     if not user_id:
         return _err("Participant ID is required.", 400, "missing_user_id")
-
     try:
         with DBSession() as s:
             us   = _upsert_session(s, user_id, condition)
@@ -614,8 +709,7 @@ def start():
             if not us.task_json:
                 us.task_json = json.dumps(task)
             s.commit()
-            log.info("start ok user=%s round=%d completed=%d",
-                     user_id, us.current_round, us.completed)
+            log.info("start ok user=%s round=%d", user_id, us.current_round)
             return jsonify({
                 "status":        "ok",
                 "current_round": us.current_round,
@@ -629,16 +723,12 @@ def start():
         return _err(f"Could not start session: {exc}", 500, "server_error")
 
 
-# ── Submit ────────────────────────────────────────────────────
-
 @app.route("/submit", methods=["POST"])
 def submit():
-    # 1. Extract and validate user_id
     user_id = (request.form.get("user_id") or "").strip()
     if not user_id:
         return _err("Missing user_id.", 400, "missing_user_id")
 
-    # 2. Normalise and validate decision value
     raw = (request.form.get("decision_value") or "").strip().replace(",", ".")
     try:
         decision_value = float(raw)
@@ -652,10 +742,8 @@ def submit():
 
     try:
         with DBSession() as s:
-            # 3. Load session — do NOT create here; must exist from /start
             us = s.query(UserSession).filter_by(user_id=user_id).first()
             if not us:
-                # Session missing: auto-create so user doesn't get stuck
                 log.warning("submit: no session for user=%s, auto-creating", user_id)
                 condition = (request.form.get("condition") or "control").strip()
                 us = _upsert_session(s, user_id, condition)
@@ -664,37 +752,28 @@ def submit():
             submitted_round = int(request.form.get("round_number") or us.current_round)
             expected_round  = us.current_round
 
-            # 4. Round guard — resync if mismatch
             if submitted_round != expected_round:
                 log.warning("round mismatch user=%s submitted=%d expected=%d",
                             user_id, submitted_round, expected_round)
                 task = json.loads(us.task_json) if us.task_json else generate_task()
                 if not us.task_json:
                     us.task_json = json.dumps(task)
-                s.commit()   # commit any auto-created session
-                return jsonify({
-                    "status":        "resync",
-                    "current_round": expected_round,
-                    "task":          task,
-                })
+                s.commit()
+                return jsonify({"status": "resync", "current_round": expected_round, "task": task})
 
-            # 5. Load authoritative task from backend
-            if us.task_json:
-                task = json.loads(us.task_json)
-            else:
-                task = generate_task()
+            task = json.loads(us.task_json) if us.task_json else generate_task()
+            if not us.task_json:
                 us.task_json = json.dumps(task)
 
-            tv          = task["true_value"]
-            anchor      = task["anchor"]
-            a_disp      = task["anchor_displacement"]
-            signal      = task["signal"]
-            s_noise     = task["signal_noise"]
+            tv      = task["true_value"]
+            anchor  = task["anchor"]
+            a_disp  = task["anchor_displacement"]
+            signal  = task["signal"]
+            s_noise = task["signal_noise"]
 
             abi       = compute_abi(decision_value, tv, anchor)
             rel_error = compute_relative_error(decision_value, tv)
 
-            # 6. Insert decision row
             d = Decision(
                 user_id=user_id, condition=us.condition,
                 round_number=expected_round,
@@ -706,9 +785,11 @@ def submit():
             )
             s.add(d)
 
-            # 7. Bandit intervention (treatment only, round >= 5, no nested sessions)
-            intervention = None
-            if us.condition == "treatment" and expected_round >= 5:
+            # ── INTERVENTION (fixed: fires for ALL participants from round 5)
+            # Condition controls display only — logging happens regardless
+            intervention      = None
+            intervention_action = None
+            if expected_round >= 5:
                 prev = (
                     s.query(Decision)
                     .filter(Decision.user_id == user_id, Decision.abi.isnot(None))
@@ -716,19 +797,27 @@ def submit():
                     .limit(5).all()
                 )
                 if len(prev) >= 4:
-                    r_abi   = float(np.mean([p.abi for p in prev]))
-                    r_err   = [p.relative_error for p in prev if p.relative_error is not None]
-                    bandit  = _load_bandit(s, user_id)
-                    action  = _select_action(bandit, r_abi)
-                    reward  = (float(np.mean(r_err[:-3]) - np.mean(r_err[-3:]))
-                               if len(r_err) > 3 else 0.0)
-                    bandit  = _update_bandit(bandit, action, reward)
+                    r_abi  = float(np.mean([p.abi for p in prev]))
+                    r_err  = [p.relative_error for p in prev if p.relative_error is not None]
+                    bandit = _load_bandit(s, user_id)
+                    action = _select_action(bandit, r_abi)
+                    reward = (float(np.mean(r_err[:-3]) - np.mean(r_err[-3:]))
+                              if len(r_err) > 3 else 0.0)
+                    bandit = _update_bandit(bandit, action, reward)
                     _save_bandit(s, user_id, bandit)
-                    s.add(Intervention(user_id=user_id,
-                                       round_number=expected_round, action=action))
-                    intervention = _FEEDBACK[action]
 
-            # 8. Advance session state
+                    # Display to treatment condition only
+                    displayed = 1 if us.condition == "treatment" else 0
+                    s.add(Intervention(user_id=user_id,
+                                       round_number=expected_round,
+                                       action=action,
+                                       displayed=displayed))
+                    intervention_action = action
+                    if displayed:
+                        intervention = _FEEDBACK[action]
+                    log.info("intervention user=%s round=%d action=%s displayed=%d",
+                             user_id, expected_round, action, displayed)
+
             is_last   = (expected_round >= TOTAL_ROUNDS)
             next_task = None
             if is_last:
@@ -741,21 +830,19 @@ def submit():
                 us.task_json     = json.dumps(next_task)
                 us.updated_at    = datetime.utcnow()
 
-            # 9. Single atomic commit
             s.commit()
             decision_id = d.id
 
-        # 10. Async event log (outside transaction)
-        _log_event(user_id, expected_round, "submission_success")
-        log.info("submit OK user=%s round=%d abi=%.3f is_last=%s",
-                 user_id, expected_round, abi, is_last)
+        _log_event(user_id, expected_round, "submission_success",
+                   {"abi": abi, "intervention_action": intervention_action})
+        log.info("submit OK user=%s round=%d abi=%.3f", user_id, expected_round, abi)
 
         abi_interp = (
-            "Your estimate was close to the reference figure — possible anchoring effect."
+            "Your estimate stayed close to the reference value this round."
             if abi > 0.6 else
-            "Your estimate moved away from the reference figure."
+            "Your estimate moved away from the reference value this round."
             if abi < 0.1 else
-            "Your estimate showed moderate reference influence."
+            "Your estimate showed moderate influence from the reference value."
         )
 
         return jsonify({
@@ -780,14 +867,37 @@ def submit():
         return _err(f"Submission failed: {exc}", 500, "server_error")
 
 
-# ── Analytics ─────────────────────────────────────────────────
-
 @app.route("/session_metrics/<path:user_id>")
 def session_metrics(user_id):
     df = get_user_df(user_id)
     if df.empty:
         return jsonify({"status": "no_data"})
     return jsonify(compute_full_metrics(df))
+
+
+@app.route("/full_analysis/<path:user_id>")
+def full_analysis(user_id):
+    """Returns all metrics including RABI and IES."""
+    df = get_user_df(user_id)
+    if df.empty:
+        return jsonify({"status": "no_data"})
+
+    metrics = compute_full_metrics(df)
+    rabi    = compute_rabi(df)
+
+    # Load interventions for IES
+    with DBSession() as s:
+        irows = (s.query(Intervention)
+                 .filter(Intervention.user_id == user_id)
+                 .order_by(Intervention.round_number)
+                 .all())
+        interventions = [{"round_number": i.round_number,
+                          "action": i.action,
+                          "displayed": i.displayed or 0} for i in irows]
+
+    ies = compute_ies(df, interventions)
+
+    return jsonify({**metrics, "rabi": rabi, "ies": ies, "interventions": interventions})
 
 
 @app.route("/robustness/<path:user_id>")
@@ -804,10 +914,8 @@ def robustness(user_id):
 def api_population_metrics():
     try:
         with DBSession() as s:
-            rows     = s.query(Decision).filter(
-                Decision.outcome_value.isnot(None),
-                Decision.abi.isnot(None),
-            ).all()
+            rows = s.query(Decision).filter(
+                Decision.outcome_value.isnot(None), Decision.abi.isnot(None)).all()
             if not rows:
                 return jsonify({"status": "no_data"})
             all_abi     = [r.abi for r in rows]
@@ -815,8 +923,7 @@ def api_population_metrics():
             user_ids    = list({r.user_id for r in rows})
 
         pop = {
-            "n_users":    len(user_ids),
-            "n_decisions": len(all_abi),
+            "n_users":    len(user_ids), "n_decisions": len(all_abi),
             "population_mean_abi":       round(float(np.mean(all_abi)), 4),
             "population_std_abi":        round(float(np.std(all_abi)), 4),
             "population_mean_rel_error": round(float(np.mean(all_rel_err)), 4) if all_rel_err else None,
@@ -841,33 +948,24 @@ def dashboard():
         with DBSession() as s:
             d_rows = s.query(Decision).order_by(Decision.submitted_at.desc()).limit(500).all()
             decisions = [{
-                "id":             d.id,
-                "user_id":        d.user_id,
-                "condition":      d.condition or "control",
-                "round_number":   d.round_number,
-                "decision_value": d.decision_value,
-                "anchor":         d.anchor,
-                "signal":         d.signal,
-                "true_value":     d.true_value,
-                "outcome_value":  d.outcome_value,
+                "id": d.id, "user_id": d.user_id,
+                "condition": d.condition or "control",
+                "round_number": d.round_number, "decision_value": d.decision_value,
+                "anchor": d.anchor, "signal": d.signal, "true_value": d.true_value,
+                "outcome_value": d.outcome_value,
                 "abi":            round(d.abi, 3) if d.abi is not None else None,
                 "relative_error": round(d.relative_error, 3) if d.relative_error is not None else None,
                 "timestamp":      d.submitted_at.strftime("%Y-%m-%d %H:%M") if d.submitted_at else "",
             } for d in d_rows]
             s_rows = s.query(UserSession).order_by(UserSession.created_at.desc()).all()
-            sessions = [{
-                "user_id":       ss.user_id,
-                "condition":     ss.condition,
-                "current_round": ss.current_round,
-                "completed":     ss.completed,
-            } for ss in s_rows]
+            sessions = [{"user_id": ss.user_id, "condition": ss.condition,
+                         "current_round": ss.current_round, "completed": ss.completed}
+                        for ss in s_rows]
         return render_template("dashboard.html", decisions=decisions, sessions=sessions)
     except Exception as exc:
         log.exception("dashboard error")
         return jsonify({"status": "error", "msg": str(exc)}), 500
 
-
-# ── Entry point ───────────────────────────────────────────────
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))

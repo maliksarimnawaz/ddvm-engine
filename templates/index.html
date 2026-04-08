@@ -6,31 +6,51 @@
 <title>Prediction Study</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <style>
+/* ── Progress ── */
 .progress-track{height:1px;background:var(--border);margin-bottom:48px;}
 .progress-fill{height:1px;background:var(--gold);transition:width .7s ease;width:0%;}
+
+/* ── Stimulus ── */
 .stimulus{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border-gold);border:.5px solid var(--border-gold);margin-bottom:36px;}
 .stimulus-cell{background:var(--bg-1);padding:28px 24px;}
 .stimulus-label{font-family:var(--mono);font-size:9px;letter-spacing:.25em;color:var(--text-3);text-transform:uppercase;margin-bottom:12px;}
 .stimulus-value{font-family:var(--mono);font-size:36px;font-weight:300;color:var(--text);letter-spacing:-.02em;line-height:1;}
 .stimulus-unit{font-family:var(--mono);font-size:11px;color:var(--text-3);margin-top:6px;}
+
+/* ── Input ── */
 .estimate-input{width:100%;background:transparent;border:none;border-bottom:.5px solid var(--border);color:var(--text);font-family:var(--mono);font-size:32px;font-weight:300;padding:16px 0;outline:none;transition:border-color .2s;-moz-appearance:textfield;letter-spacing:-.01em;}
 .estimate-input:focus{border-color:var(--gold);}
 .estimate-input::placeholder{color:var(--text-3);}
 .estimate-input::-webkit-outer-spin-button,.estimate-input::-webkit-inner-spin-button{-webkit-appearance:none;}
 .input-unit{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--text-3);text-transform:uppercase;margin-top:8px;}
+.input-helper{font-family:var(--mono);font-size:10px;color:var(--text-3);margin-top:6px;letter-spacing:.04em;}
+
+/* ── Reasoning toggle ── */
 .reasoning-toggle{font-family:var(--mono);font-size:10px;letter-spacing:.15em;color:var(--text-3);text-transform:uppercase;cursor:pointer;background:none;border:none;padding:0;margin-bottom:16px;display:block;transition:color .2s;}
 .reasoning-toggle:hover{color:var(--text-2);}
+
+/* ── Error ── */
 .err-msg{font-family:var(--mono);font-size:11px;color:#DC5050;padding:10px 14px;border-left:2px solid #DC5050;background:rgba(220,80,80,.06);margin-bottom:16px;display:none;word-break:break-word;}
-.result-panel{background:var(--bg-1);border:.5px solid var(--border-gold);padding:24px 28px;margin-bottom:28px;display:none;}
+
+/* ── Submission confirmation ── */
+.submit-confirm{font-family:var(--mono);font-size:11px;color:#2EAA6A;padding:10px 14px;border-left:2px solid #2EAA6A;background:rgba(46,170,106,.06);margin-bottom:16px;display:none;}
+
+/* ── Result panel ── */
+.result-panel{background:var(--bg-1);border:.5px solid var(--border-gold);padding:24px 28px;margin-bottom:28px;display:none;opacity:0;transition:opacity .2s ease;}
+.result-panel.visible{opacity:1;}
 .result-row{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:.5px solid var(--border);}
 .result-row:last-child{border-bottom:none;}
 .result-label{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--text-3);text-transform:uppercase;padding-top:2px;}
 .result-val{font-family:var(--mono);font-size:15px;color:var(--text);text-align:right;}
 .result-val.good{color:#2EAA6A;}.result-val.warn{color:var(--gold);}.result-val.bad{color:#DC5050;}
 .result-mech{font-family:var(--mono);font-size:10px;color:var(--text-3);margin-top:3px;line-height:1.5;text-align:right;max-width:220px;}
+
+/* ── Intervention strip ── */
 .istrip{border-left:2px solid var(--border-gold);padding:12px 16px;margin-top:16px;display:none;background:var(--gold-glow);}
 .istrip-label{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:6px;}
 .istrip p{font-family:var(--mono);font-size:11px;color:var(--text);line-height:1.65;letter-spacing:.03em;}
+
+/* ── Batch reveal ── */
 .reveal-card{background:var(--bg-1);border:.5px solid var(--border);padding:16px 20px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
 .reveal-card.accurate{border-color:rgba(46,170,106,.35);}.reveal-card.close{border-color:var(--border-gold);}.reveal-card.off{border-color:rgba(220,80,80,.3);}
 .reveal-round{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--text-3);text-transform:uppercase;min-width:56px;}
@@ -40,9 +60,15 @@
 .reveal-num-val{font-family:var(--mono);font-size:15px;color:var(--text);}
 .reveal-delta{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:2px;}
 .delta-good{background:rgba(46,170,106,.1);color:#2EAA6A;}.delta-mid{background:rgba(201,168,76,.1);color:var(--gold);}.delta-bad{background:rgba(220,80,80,.1);color:#DC5050;}
+
+/* ── Analysis ── */
+.analysis-section{margin-bottom:40px;}
+.analysis-section-title{font-family:var(--mono);font-size:9px;letter-spacing:.25em;color:var(--gold);text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:.5px solid var(--border-gold);}
+
 .metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);margin-bottom:2px;}
 .metric-cell{background:var(--bg-1);padding:20px 18px;}
-.metric-label{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--text-3);text-transform:uppercase;margin-bottom:8px;}
+.metric-label-main{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--text);margin-bottom:2px;}
+.metric-label-tech{font-family:var(--mono);font-size:9px;color:var(--text-3);letter-spacing:.1em;margin-bottom:10px;}
 .metric-value{font-family:var(--mono);font-size:22px;font-weight:300;color:var(--text);}
 .metric-value.good{color:#2EAA6A;}.metric-value.warn{color:var(--gold);}.metric-value.bad{color:#DC5050;}
 .metric-sub{font-family:var(--mono);font-size:9px;color:var(--text-3);margin-top:5px;letter-spacing:.05em;line-height:1.5;}
@@ -50,19 +76,46 @@
 .conf-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
 .conf-dot.high{background:#2EAA6A;}.conf-dot.moderate{background:var(--gold);}.conf-dot.low{background:#DC5050;}.conf-dot.unknown{background:var(--text-3);}
 .conf-label{font-family:var(--mono);font-size:9px;color:var(--text-3);letter-spacing:.1em;}
+
+/* ── RABI cell ── */
+.rabi-cell{background:var(--bg-1);border:.5px solid var(--border-gold);padding:24px 20px;margin-bottom:2px;}
+.rabi-score-row{display:flex;align-items:baseline;gap:12px;margin-bottom:8px;}
+.rabi-score{font-family:var(--mono);font-size:28px;font-weight:300;}
+.rabi-band{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;padding:3px 8px;border-radius:2px;}
+.rabi-band.low{background:rgba(46,170,106,.1);color:#2EAA6A;border:.5px solid rgba(46,170,106,.3);}
+.rabi-band.moderate{background:rgba(201,168,76,.08);color:var(--gold);border:.5px solid var(--border-gold);}
+.rabi-band.high{background:rgba(220,80,80,.08);color:#DC5050;border:.5px solid rgba(220,80,80,.25);}
+.rabi-interp{font-family:var(--mono);font-size:11px;color:var(--text-2);line-height:1.7;letter-spacing:.03em;}
+
+/* ── IES cell ── */
+.ies-cell{background:var(--bg-1);border:.5px solid var(--border);padding:24px 20px;margin-bottom:2px;}
+.ies-bar-track{height:3px;background:var(--border);border-radius:2px;margin:12px 0;position:relative;}
+.ies-bar-fill{height:3px;border-radius:2px;transition:width .8s ease;}
+.ies-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--text-3);letter-spacing:.1em;}
+.ies-interp{font-family:var(--mono);font-size:11px;color:var(--text-2);line-height:1.7;letter-spacing:.03em;margin-top:10px;}
+
+/* ── ABI trajectory ── */
 .rob-note{font-family:var(--mono);font-size:10px;color:var(--text-3);padding:12px 16px;border:.5px solid var(--border);margin-bottom:32px;line-height:1.7;letter-spacing:.03em;}
 .abi-track{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
 .abi-track-label{font-family:var(--mono);font-size:9px;color:var(--text-3);width:44px;text-align:right;flex-shrink:0;}
 .abi-track-bar{flex:1;height:2px;background:var(--border);position:relative;}
 .abi-track-fill{height:2px;position:absolute;top:0;left:0;transition:width .7s ease;}
 .abi-track-val{font-family:var(--mono);font-size:9px;color:var(--text-2);min-width:40px;flex-shrink:0;}
+
+/* ── CSS states ── */
 .css-state{display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:3px 7px;border-radius:2px;margin:2px;}
 .css-under{background:rgba(46,170,106,.1);color:#2EAA6A;border:.5px solid rgba(46,170,106,.3);}
 .css-moderate{background:rgba(201,168,76,.08);color:var(--gold);border:.5px solid var(--border-gold);}
 .css-over{background:rgba(220,80,80,.08);color:#DC5050;border:.5px solid rgba(220,80,80,.25);}
-.insight-box{border-left:2px solid var(--gold);background:var(--gold-glow);padding:16px 20px;margin-bottom:20px;}
+
+/* ── Insights ── */
+.insight-box{border-left:2px solid var(--gold);background:var(--gold-glow);padding:16px 20px;margin-bottom:12px;}
 .insight-box p{font-family:var(--mono);font-size:12px;color:var(--text);line-height:1.75;letter-spacing:.03em;}
-.screen{display:none;}.screen.active{display:block;}
+.insight-label{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:6px;}
+
+/* ── Screen transitions ── */
+.screen{display:none;opacity:0;transition:opacity .15s ease;}
+.screen.active{display:block;opacity:1;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .saving{animation:pulse 1s infinite;}
 </style>
@@ -78,7 +131,7 @@
 
 <div class="container">
 
-<!-- INTRO -->
+<!-- ══ INTRO ══ -->
 <div id="s-intro" class="screen active">
   <div class="fade-up">
     <p class="eyebrow">Study instructions</p>
@@ -86,26 +139,27 @@
   </div>
   <div class="divider-gold"></div>
   <div class="panel fade-up-2" style="margin-bottom:28px;">
-    <p style="font-size:15px;line-height:1.85;color:var(--text-2);">You will make a series of market predictions. In each round you will see two figures — a recent reported figure and a market forecast — and submit your own prediction.</p>
+    <p style="font-size:15px;line-height:1.85;color:var(--text-2);">You will review data for a series of startups and predict their monthly user counts. Each round presents two reference figures — use them, ignore them, or weigh them as you see fit.</p>
     <div style="margin-top:24px;padding-top:24px;border-top:.5px solid var(--border);">
-      <div style="display:flex;gap:14px;margin-bottom:12px;"><span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span><p style="font-size:14px;color:var(--text);line-height:1.6;"><strong>20 rounds</strong> in total</p></div>
-      <div style="display:flex;gap:14px;margin-bottom:12px;"><span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span><p style="font-size:14px;color:var(--text);line-height:1.6;"><strong>Full analysis</strong> of your predictions shown at the end</p></div>
-      <div style="display:flex;gap:14px;margin-bottom:12px;"><span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span><p style="font-size:14px;color:var(--text);line-height:1.6;">The market forecast <strong>may or may not be accurate</strong></p></div>
-      <div style="display:flex;gap:14px;"><span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span><p style="font-size:14px;color:var(--text);line-height:1.6;">Takes approximately <strong>8–10 minutes</strong></p></div>
+      <div style="display:flex;gap:14px;margin-bottom:12px;"><span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span><p style="font-size:14px;color:var(--text);line-height:1.6;"><strong>20 rounds.</strong> Each round takes about 30 seconds.</p></div>
+      <div style="display:flex;gap:14px;margin-bottom:12px;"><span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span><p style="font-size:14px;color:var(--text);line-height:1.6;">Every 5 rounds you will see a <strong>summary of your accuracy</strong> so far.</p></div>
+      <div style="display:flex;gap:14px;margin-bottom:12px;"><span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span><p style="font-size:14px;color:var(--text);line-height:1.6;">At the end you will receive a <strong>full behavioral analysis</strong> of your decision patterns.</p></div>
+      <div style="display:flex;gap:14px;"><span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span><p style="font-size:14px;color:var(--text);line-height:1.6;">The market forecast <strong>may or may not be accurate</strong> — trust your own judgment.</p></div>
     </div>
   </div>
   <div class="field fade-up-3">
     <label for="uid-input">Participant ID</label>
     <input type="text" id="uid-input" placeholder="Choose any identifier, e.g. falcon_42" autocomplete="off" spellcheck="false">
-    <p style="font-family:var(--mono);font-size:10px;color:var(--text-3);margin-top:8px;letter-spacing:.05em;">No personal information is collected.</p>
+    <p style="font-family:var(--mono);font-size:10px;color:var(--text-3);margin-top:8px;letter-spacing:.05em;">No personal information is collected. This ID links your responses across rounds only.</p>
   </div>
   <div class="err-msg" id="start-err"></div>
   <button class="btn btn-full fade-up-3" id="start-btn" onclick="startStudy()">Begin study →</button>
 </div>
 
-<!-- TASK -->
+<!-- ══ TASK ══ -->
 <div id="s-task" class="screen">
   <div class="progress-track"><div class="progress-fill" id="prog"></div></div>
+
   <div class="stimulus">
     <div class="stimulus-cell">
       <p class="stimulus-label">Last month's figure</p>
@@ -119,8 +173,10 @@
     </div>
   </div>
 
+  <!-- Result panel — shown after submission -->
   <div class="result-panel" id="result-panel">
-    <p class="eyebrow" style="margin-bottom:16px;">Round result</p>
+    <p class="eyebrow" style="margin-bottom:4px;">Round result</p>
+    <p style="font-family:var(--mono);font-size:10px;color:var(--text-3);margin-bottom:16px;letter-spacing:.04em;">Prediction submitted. Review your result below, then continue.</p>
     <div class="result-row">
       <span class="result-label">Your prediction</span>
       <p class="result-val" id="res-est">—</p>
@@ -130,14 +186,14 @@
       <p class="result-val good" id="res-act">—</p>
     </div>
     <div class="result-row">
-      <span class="result-label">Prediction error</span>
+      <span class="result-label">Difference</span>
       <div style="text-align:right;">
         <p class="result-val" id="res-err">—</p>
         <p class="result-mech" id="res-mech"></p>
       </div>
     </div>
     <div class="istrip" id="istrip">
-      <p class="istrip-label">System note</p>
+      <p class="istrip-label">Observation</p>
       <p id="istrip-text"></p>
     </div>
   </div>
@@ -149,95 +205,175 @@
     <div class="field" id="input-section">
       <label for="decision_value">Your prediction</label>
       <input type="number" class="estimate-input" id="decision_value"
-             name="decision_value" placeholder="0.0" step="0.1" min="0"
+             name="decision_value" placeholder="e.g. 48.5" step="0.1" min="0"
              inputmode="decimal">
       <p class="input-unit">thousands of users</p>
+      <p class="input-helper">Enter your estimate, then press Submit.</p>
     </div>
 
     <div class="field" style="margin-bottom:16px;" id="reasoning-section">
       <button type="button" class="reasoning-toggle" id="rtoggle" onclick="toggleReasoning()">+ Add reasoning (optional)</button>
-      <textarea id="reasoning" name="reasoning" placeholder="Why did you choose this value?" style="display:none;margin-top:0;"></textarea>
+      <textarea id="reasoning" name="reasoning" placeholder="What influenced your estimate?" style="display:none;margin-top:0;"></textarea>
     </div>
 
     <div class="err-msg" id="submit-err"></div>
 
     <button type="submit" class="btn btn-full" id="submit-btn">Submit prediction →</button>
     <button type="button" class="btn btn-full" id="next-btn"
-            style="display:none;margin-top:12px;" onclick="advance()">Next round →</button>
+            style="display:none;margin-top:12px;" onclick="advance()">Continue to next round →</button>
   </form>
 </div>
 
-<!-- BATCH REVEAL -->
+<!-- ══ BATCH REVEAL ══ -->
 <div id="s-reveal" class="screen">
   <p class="eyebrow" id="reveal-eyebrow">Rounds 1–5 results</p>
-  <h1>Batch<br><em>results</em></h1>
+  <h1>Your accuracy<br><em>so far</em></h1>
   <div class="divider-gold"></div>
   <div id="reveal-cards" style="margin-bottom:32px;"></div>
   <button class="btn btn-full" onclick="afterReveal()">Continue →</button>
 </div>
 
-<!-- ANALYSIS -->
+<!-- ══ ANALYSIS ══ -->
 <div id="s-analysis" class="screen">
   <p class="eyebrow">Study complete</p>
   <h1>Your decision<br><em>profile</em></h1>
   <div class="divider-gold"></div>
+
   <div class="rob-note" id="rob-note">Computing reliability indicators…</div>
-  <div class="metric-grid" style="margin-bottom:2px;">
-    <div class="metric-cell">
-      <p class="metric-label">Reference alignment</p>
-      <p class="metric-value" id="an-abi">—</p>
-      <p class="metric-sub" id="an-abi-sub">mean anchoring bias index</p>
-      <div class="conf-row"><div class="conf-dot unknown" id="cd-abi"></div><span class="conf-label" id="cl-abi">stability: —</span></div>
-    </div>
-    <div class="metric-cell">
-      <p class="metric-label">Accuracy drift</p>
-      <p class="metric-value" id="an-cd">—</p>
-      <p class="metric-sub" id="an-cd-sub">error trend across rounds</p>
-      <div class="conf-row"><div class="conf-dot unknown" id="cd-cd"></div><span class="conf-label" id="cl-cd">reliability: —</span></div>
-    </div>
-  </div>
-  <div class="metric-grid" style="margin-bottom:2px;">
-    <div class="metric-cell">
-      <p class="metric-label">Forecast usage</p>
-      <p class="metric-value" id="an-sii">—</p>
-      <p class="metric-sub" id="an-sii-sub">signal independence index</p>
-      <div class="conf-row"><div class="conf-dot unknown" id="cd-sii"></div><span class="conf-label" id="cl-sii">consistency: —</span></div>
-    </div>
-    <div class="metric-cell">
-      <p class="metric-label">Pattern stability</p>
-      <p class="metric-value" id="an-tli">—</p>
-      <p class="metric-sub" id="an-tli-sub">trajectory lock-in</p>
-      <div class="conf-row"><div class="conf-dot unknown" id="cd-tli"></div><span class="conf-label" id="cl-tli">split-half: —</span></div>
+
+  <!-- Section 1: Accuracy -->
+  <div class="analysis-section">
+    <p class="analysis-section-title">Accuracy</p>
+    <div class="metric-grid" style="margin-bottom:2px;">
+      <div class="metric-cell">
+        <p class="metric-label-main">Reference alignment</p>
+        <p class="metric-label-tech">(Anchoring Bias Index)</p>
+        <p class="metric-value" id="an-abi">—</p>
+        <p class="metric-sub" id="an-abi-sub">—</p>
+        <div class="conf-row"><div class="conf-dot unknown" id="cd-abi"></div><span class="conf-label" id="cl-abi">stability: —</span></div>
+      </div>
+      <div class="metric-cell">
+        <p class="metric-label-main">Accuracy over time</p>
+        <p class="metric-label-tech">(Calibration Drift)</p>
+        <p class="metric-value" id="an-cd">—</p>
+        <p class="metric-sub" id="an-cd-sub">—</p>
+        <div class="conf-row"><div class="conf-dot unknown" id="cd-cd"></div><span class="conf-label" id="cl-cd">reliability: —</span></div>
+      </div>
     </div>
   </div>
-  <div class="metric-grid" style="margin-bottom:32px;">
-    <div class="metric-cell">
-      <p class="metric-label">Forecast sensitivity</p>
-      <p class="metric-value" id="an-be">—</p>
-      <p class="metric-sub" id="an-be-sub">bias elasticity</p>
+
+  <!-- Section 2: Decision Style -->
+  <div class="analysis-section">
+    <p class="analysis-section-title">Decision Style</p>
+    <div class="metric-grid" style="margin-bottom:2px;">
+      <div class="metric-cell">
+        <p class="metric-label-main">Forecast independence</p>
+        <p class="metric-label-tech">(Signal Independence Index)</p>
+        <p class="metric-value" id="an-sii">—</p>
+        <p class="metric-sub" id="an-sii-sub">—</p>
+        <div class="conf-row"><div class="conf-dot unknown" id="cd-sii"></div><span class="conf-label" id="cl-sii">consistency: —</span></div>
+      </div>
+      <div class="metric-cell">
+        <p class="metric-label-main">Consistency of pattern</p>
+        <p class="metric-label-tech">(Trajectory Lock-In)</p>
+        <p class="metric-value" id="an-tli">—</p>
+        <p class="metric-sub" id="an-tli-sub">—</p>
+        <div class="conf-row"><div class="conf-dot unknown" id="cd-tli"></div><span class="conf-label" id="cl-tli">split-half: —</span></div>
+      </div>
     </div>
-    <div class="metric-cell">
-      <p class="metric-label">Correction tendency</p>
-      <p class="metric-value" id="an-ads">—</p>
-      <p class="metric-sub" id="an-ads-sub">anchor displacement sensitivity</p>
+  </div>
+
+  <!-- Section 3: Bias Dynamics -->
+  <div class="analysis-section">
+    <p class="analysis-section-title">Bias Dynamics</p>
+    <div class="metric-grid" style="margin-bottom:2px;">
+      <div class="metric-cell">
+        <p class="metric-label-main">Sensitivity to extreme anchors</p>
+        <p class="metric-label-tech">(Bias Elasticity)</p>
+        <p class="metric-value" id="an-be">—</p>
+        <p class="metric-sub" id="an-be-sub">—</p>
+      </div>
+      <div class="metric-cell">
+        <p class="metric-label-main">Self-correction tendency</p>
+        <p class="metric-label-tech">(Anchor Displacement Sensitivity)</p>
+        <p class="metric-value" id="an-ads">—</p>
+        <p class="metric-sub" id="an-ads-sub">—</p>
+      </div>
+    </div>
+
+    <!-- RABI -->
+    <div class="rabi-cell" style="margin-top:2px;">
+      <p class="metric-label-main" style="margin-bottom:2px;">Anchoring susceptibility</p>
+      <p class="metric-label-tech" style="margin-bottom:14px;">(Resource-Rational Agent Bias Index)</p>
+      <div class="rabi-score-row">
+        <span class="metric-value rabi-score" id="an-rabi">—</span>
+        <span class="rabi-band" id="an-rabi-band">—</span>
+      </div>
+      <p class="rabi-interp" id="an-rabi-interp">Computing…</p>
     </div>
   </div>
-  <div style="margin-bottom:32px;">
-    <p class="eyebrow" style="margin-bottom:16px;">Reference alignment by round</p>
-    <div id="abi-tracks"></div>
-    <div style="display:flex;justify-content:space-between;margin-top:10px;">
-      <span style="font-family:var(--mono);font-size:9px;color:var(--text-3);">← independent</span>
-      <span style="font-family:var(--mono);font-size:9px;color:var(--text-3);">aligned →</span>
+
+  <!-- Section 4: Adaptation -->
+  <div class="analysis-section">
+    <p class="analysis-section-title">Adaptation</p>
+
+    <!-- ABI trajectory bars -->
+    <div style="margin-bottom:24px;">
+      <p style="font-family:var(--mono);font-size:10px;color:var(--text-2);margin-bottom:14px;letter-spacing:.05em;">How your reference alignment changed across rounds (lower = more independent)</p>
+      <div id="abi-tracks"></div>
+      <div style="display:flex;justify-content:space-between;margin-top:10px;">
+        <span style="font-family:var(--mono);font-size:9px;color:var(--text-3);">← independent of reference</span>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--text-3);">aligned with reference →</span>
+      </div>
+    </div>
+
+    <!-- CSS state sequence -->
+    <div style="margin-bottom:4px;">
+      <p style="font-family:var(--mono);font-size:10px;color:var(--text-2);margin-bottom:10px;letter-spacing:.05em;">Decision state across 20 rounds</p>
+      <div id="css-states" style="margin-bottom:8px;line-height:2;"></div>
+      <p class="metric-sub" id="css-summary"></p>
     </div>
   </div>
-  <div style="margin-bottom:32px;">
-    <p class="eyebrow" style="margin-bottom:12px;">Cognitive state sequence</p>
-    <div id="css-states" style="margin-bottom:8px;line-height:2;"></div>
-    <p class="metric-sub" id="css-summary"></p>
+
+  <!-- Section 5: Intervention Impact -->
+  <div class="analysis-section">
+    <p class="analysis-section-title">Intervention Impact</p>
+    <div class="ies-cell">
+      <p class="metric-label-main" style="margin-bottom:2px;">Behavioral response to feedback</p>
+      <p class="metric-label-tech" style="margin-bottom:14px;">(Intervention Effectiveness Score)</p>
+      <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:4px;">
+        <span class="metric-value" id="an-ies">—</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-3);">range: −1 (worsened) to +1 (strong improvement)</span>
+      </div>
+      <div class="ies-bar-track">
+        <div class="ies-bar-fill" id="ies-bar" style="width:50%;background:var(--text-3);"></div>
+      </div>
+      <div class="ies-labels">
+        <span>Worsened</span>
+        <span>No change</span>
+        <span>Improved</span>
+      </div>
+      <p class="ies-interp" id="an-ies-interp">Computing…</p>
+    </div>
   </div>
-  <div class="insight-box" style="margin-bottom:32px;">
-    <p id="insight-text">Analysing your decision pattern…</p>
+
+  <!-- Multi-layer insight -->
+  <div class="analysis-section">
+    <p class="analysis-section-title">Behavioral synthesis</p>
+    <div class="insight-box" style="margin-bottom:12px;">
+      <p class="insight-label">Primary pattern</p>
+      <p id="insight-primary">Analysing…</p>
+    </div>
+    <div class="insight-box" style="margin-bottom:12px;">
+      <p class="insight-label">Temporal dynamics</p>
+      <p id="insight-temporal">Analysing…</p>
+    </div>
+    <div class="insight-box" style="margin-bottom:12px;">
+      <p class="insight-label">Cross-metric relationships</p>
+      <p id="insight-cross">Analysing…</p>
+    </div>
   </div>
+
   <p style="font-family:var(--mono);font-size:11px;color:var(--text-3);line-height:1.8;letter-spacing:.05em;margin-bottom:28px;">
     Thank you for participating. Your responses have been recorded as part of an independent research program on sequential decision-making.
   </p>
@@ -255,171 +391,135 @@
 ───────────────────────────────────────────────────────────── */
 const TOTAL   = 20;
 const REVEAL  = 5;
-const TIMEOUT = 20000;   // 20 s per attempt
-const RETRIES = 2;       // max retries (3 total attempts)
+const TIMEOUT = 20000;
+const RETRIES = 2;
 
 /* ─────────────────────────────────────────────────────────────
-   STATE  (all round state lives here — no hidden form fields)
+   STATE
 ───────────────────────────────────────────────────────────── */
 let uid        = '';
 let cond       = new URLSearchParams(location.search).get('condition') || 'control';
 let curRound   = 1;
-let rounds     = [];       // [{round,estimate,actual,abi,rel_error,anchor,signal}]
+let rounds     = [];
 let revealFrom = 1;
 let busy       = false;
-let nextCache  = null;     // next_task from last submit response
+let nextCache  = null;
 
 /* ─────────────────────────────────────────────────────────────
-   SAFE NUMBER HELPER
+   HELPERS
 ───────────────────────────────────────────────────────────── */
 function N(v, fb) {
   const n = Number(v);
   return Number.isFinite(n) ? n : (fb !== undefined ? fb : 0);
 }
+function mean(a)   { return a.length ? a.reduce((s,v)=>s+N(v),0)/a.length : 0; }
+function std(a)    { if(a.length<2)return 0; const m=mean(a); return Math.sqrt(a.reduce((s,v)=>s+Math.pow(N(v)-m,2),0)/a.length); }
+function corrArr(x,y){
+  if(!x||!y||x.length<3||x.length!==y.length)return 0;
+  const mx=mean(x),my=mean(y); let n=0,dx=0,dy=0;
+  for(let i=0;i<x.length;i++){const xi=N(x[i])-mx,yi=N(y[i])-my;n+=xi*yi;dx+=xi*xi;dy+=yi*yi;}
+  const d=Math.sqrt(dx*dy); return d>1e-6?n/d:0;
+}
+function slopeArr(x,y){
+  if(!x||!y||x.length<3)return 0;
+  const mx=mean(x),my=mean(y); let n=0,d=0;
+  for(let i=0;i<x.length;i++){const xi=N(x[i])-mx;n+=xi*(N(y[i])-my);d+=xi*xi;}
+  return d>1e-6?n/d:0;
+}
+function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
+function fmt(v,dec){ return N(v,0).toFixed(dec!==undefined?dec:3); }
 
-/* ─────────────────────────────────────────────────────────────
-   UI HELPERS
-───────────────────────────────────────────────────────────── */
-function show(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  window.scrollTo(0, 0);
+  window.scrollTo(0,0);
 }
-
-function setErr(id, msg) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.textContent = msg || '';
-  el.style.display = msg ? 'block' : 'none';
+function setErr(id,msg){
+  const el=document.getElementById(id);
+  if(!el)return; el.textContent=msg||''; el.style.display=msg?'block':'none';
 }
-
-function setBtn(id, txt, disabled) {
-  const b = document.getElementById(id);
-  if (!b) return;
-  b.textContent = txt;
-  b.disabled    = !!disabled;
-  disabled ? b.classList.add('saving') : b.classList.remove('saving');
+function setBtn(id,txt,disabled){
+  const b=document.getElementById(id);
+  if(!b)return; b.textContent=txt; b.disabled=!!disabled;
+  disabled?b.classList.add('saving'):b.classList.remove('saving');
 }
-
-function setMetric(id, sid, val, cls, sub) {
-  const el = document.getElementById(id);
-  if (el) { el.textContent = val; el.className = 'metric-value ' + cls; }
-  const s  = document.getElementById(sid);
-  if (s)    s.textContent = sub;
+function setMetric(id,sid,val,cls,sub){
+  const el=document.getElementById(id);
+  if(el){el.textContent=val;el.className='metric-value '+cls;}
+  const s=document.getElementById(sid); if(s)s.textContent=sub;
 }
-
-function setConf(dotId, lblId, level, txt) {
-  const d = document.getElementById(dotId);
-  const l = document.getElementById(lblId);
-  if (d) d.className = 'conf-dot ' + (level || 'unknown');
-  if (l) l.textContent = txt || '';
+function setConf(dotId,lblId,level,txt){
+  const d=document.getElementById(dotId); const l=document.getElementById(lblId);
+  if(d)d.className='conf-dot '+(level||'unknown'); if(l)l.textContent=txt||'';
 }
 
 /* ─────────────────────────────────────────────────────────────
    FETCH WRAPPER
-   - Reads JSON body BEFORE deciding whether to throw
-   - Surfaces backend error messages directly
-   - Does NOT retry 4xx (client errors won't change)
-   - Retries 5xx and network failures with backoff
 ───────────────────────────────────────────────────────────── */
 async function apiFetch(url, opts) {
   let lastErr = null;
-
   for (let attempt = 0; attempt <= RETRIES; attempt++) {
     const ctrl = new AbortController();
     const tid  = setTimeout(() => ctrl.abort(), TIMEOUT);
-
     try {
-      console.log(`[api] ${opts.method || 'GET'} ${url} attempt=${attempt + 1}`);
+      console.log(`[api] ${opts.method||'GET'} ${url} attempt=${attempt+1}`);
       const r = await fetch(url, { ...opts, signal: ctrl.signal });
       clearTimeout(tid);
-
-      // Always read body — backend always returns JSON
       let data = null;
-      try {
-        data = await r.json();
-      } catch (parseErr) {
-        console.error('[api] JSON parse failed:', parseErr, 'status:', r.status);
-        throw new Error(`Server returned non-JSON (HTTP ${r.status})`);
-      }
-
+      try { data = await r.json(); }
+      catch (pe) { throw new Error(`Server returned non-JSON (HTTP ${r.status})`); }
       console.log(`[api] ${url} -> HTTP ${r.status}`, data);
-
       if (!r.ok) {
-        // Backend returned a structured error — pass it through, don't retry client errors
         if (data && data.status === 'error') {
-          if (r.status >= 400 && r.status < 500) {
-            return data; // pass through 4xx immediately, no retry
-          }
-          // 5xx — retry
+          if (r.status >= 400 && r.status < 500) return data;
           lastErr = new Error(data.msg || `HTTP ${r.status}`);
           throw lastErr;
         }
         throw new Error(`HTTP ${r.status}`);
       }
-
       return data;
-
     } catch (e) {
       clearTimeout(tid);
       lastErr = e;
-      const isAbort   = e.name === 'AbortError';
-      const isNetwork = e instanceof TypeError && e.message.includes('fetch');
-      const isClient  = e.message && e.message.startsWith('HTTP 4');
-
-      console.error(`[api] ${url} attempt ${attempt + 1} failed:`,
-                    e.name, e.message);
-
-      // Never retry client errors or if we've exhausted attempts
+      const isClient = e.message && e.message.startsWith('HTTP 4');
+      console.error(`[api] ${url} attempt ${attempt+1} failed:`, e.name, e.message);
       if (isClient || attempt >= RETRIES) break;
-
-      // Exponential backoff: 800ms, 1600ms
       const delay = 800 * Math.pow(2, attempt);
       console.log(`[api] retrying in ${delay}ms…`);
       await new Promise(res => setTimeout(res, delay));
     }
   }
-
-  // All attempts failed — throw so caller can surface real message
   throw lastErr || new Error('Request failed after retries');
 }
 
 /* ─────────────────────────────────────────────────────────────
-   START STUDY
+   START
 ───────────────────────────────────────────────────────────── */
 async function startStudy() {
   const raw = (document.getElementById('uid-input').value || '').trim();
   if (!raw) {
-    setErr('start-err', 'Please enter a participant ID.');
-    document.getElementById('uid-input').focus();
-    return;
+    setErr('start-err','Please enter a participant ID before continuing.');
+    document.getElementById('uid-input').focus(); return;
   }
   uid = raw;
-  setErr('start-err', '');
-  setBtn('start-btn', 'Starting…', true);
-
+  setErr('start-err','');
+  setBtn('start-btn','Starting…',true);
   try {
     const fd = new FormData();
-    fd.append('user_id', uid);
-    fd.append('condition', cond);
-
-    const d = await apiFetch('/start', { method: 'POST', body: fd });
-
+    fd.append('user_id',uid); fd.append('condition',cond);
+    const d = await apiFetch('/start',{method:'POST',body:fd});
     if (!d || d.status !== 'ok') {
-      setErr('start-err', (d && d.msg) || 'Could not start session. Please try again.');
-      setBtn('start-btn', 'Begin study →', false);
-      return;
+      setErr('start-err',(d&&d.msg)||'Could not start session. Please try again.');
+      setBtn('start-btn','Begin study →',false); return;
     }
-
-    curRound  = N(d.current_round, 1);
+    curRound  = N(d.current_round,1);
     nextCache = d.task || null;
     renderTask(d.task, curRound);
     show('s-task');
-
-  } catch (e) {
-    console.error('[startStudy] FAILED:', e);
-    setErr('start-err', `Could not connect: ${e.message}. Please check your connection.`);
-    setBtn('start-btn', 'Begin study →', false);
+  } catch(e) {
+    console.error('[startStudy] FAILED:',e);
+    setErr('start-err',`Could not connect: ${e.message}. Please check your connection.`);
+    setBtn('start-btn','Begin study →',false);
   }
 }
 
@@ -428,210 +528,172 @@ async function startStudy() {
 ───────────────────────────────────────────────────────────── */
 function renderTask(task, rnd) {
   if (!task) {
-    console.error('[renderTask] no task object');
-    setErr('submit-err', 'Task data missing. Please refresh the page.');
-    return;
+    setErr('submit-err','Task data missing. Please refresh the page.'); return;
   }
-
   document.getElementById('f-uid').value   = uid;
   document.getElementById('f-round').value = String(rnd);
-  document.getElementById('prog').style.width =
-    Math.max(0, Math.min(100, ((rnd - 1) / TOTAL) * 100)) + '%';
-
-  document.getElementById('disp-anchor').textContent = N(task.anchor, 50).toFixed(1);
-  document.getElementById('disp-signal').textContent = N(task.signal, 50).toFixed(1);
-
-  // Reset form state
+  document.getElementById('prog').style.width = clamp(((rnd-1)/TOTAL)*100,0,100)+'%';
+  document.getElementById('disp-anchor').textContent = N(task.anchor,50).toFixed(1);
+  document.getElementById('disp-signal').textContent = N(task.signal,50).toFixed(1);
   const inp = document.getElementById('decision_value');
   inp.value = '';
   document.getElementById('reasoning').value           = '';
   document.getElementById('reasoning').style.display   = 'none';
   document.getElementById('rtoggle').textContent       = '+ Add reasoning (optional)';
   document.getElementById('result-panel').style.display = 'none';
+  document.getElementById('result-panel').classList.remove('visible');
   document.getElementById('istrip').style.display      = 'none';
   document.getElementById('input-section').style.display     = 'block';
   document.getElementById('reasoning-section').style.display = 'block';
-  setErr('submit-err', '');
-  setBtn('submit-btn', 'Submit prediction →', false);
+  setErr('submit-err','');
+  setBtn('submit-btn','Submit prediction →',false);
   document.getElementById('next-btn').style.display = 'none';
-
-  // Focus input after transition animation settles
-  setTimeout(() => { try { inp.focus(); } catch (_) {} }, 100);
+  setTimeout(()=>{ try{ inp.focus(); }catch(_){} }, 100);
 }
 
 function toggleReasoning() {
-  const t = document.getElementById('reasoning');
-  const b = document.getElementById('rtoggle');
-  const open = t.style.display === 'none' || !t.style.display;
-  t.style.display = open ? 'block' : 'none';
-  b.textContent   = open ? '− Hide reasoning' : '+ Add reasoning (optional)';
-  if (open) t.focus();
+  const t=document.getElementById('reasoning'),b=document.getElementById('rtoggle');
+  const open=t.style.display==='none'||!t.style.display;
+  t.style.display=open?'block':'none';
+  b.textContent=open?'− Hide reasoning':'+ Add reasoning (optional)';
+  if(open)t.focus();
 }
 
 /* ─────────────────────────────────────────────────────────────
-   FORM SUBMIT
+   SUBMIT
 ───────────────────────────────────────────────────────────── */
 document.getElementById('task-form').addEventListener('submit', async function(e) {
   e.preventDefault();
   if (busy) return;
 
-  // Input validation — normalise comma separators
-  const rawVal = (document.getElementById('decision_value').value || '').trim().replace(',', '.');
+  const rawVal = (document.getElementById('decision_value').value||'').trim().replace(',','.');
   const val    = parseFloat(rawVal);
-
   if (!rawVal || !Number.isFinite(val) || val < 0) {
-    setErr('submit-err', 'Please enter a valid positive number.');
-    document.getElementById('decision_value').focus();
-    return;
+    setErr('submit-err','Please enter a valid positive number before submitting.');
+    document.getElementById('decision_value').focus(); return;
   }
 
-  setErr('submit-err', '');
+  setErr('submit-err','');
   busy = true;
-  setBtn('submit-btn', 'Saving…', true);
+  setBtn('submit-btn','Saving…',true);
 
   const fd = new FormData(this);
   fd.set('decision_value', val.toString());
-  // Ensure user_id is set even if hidden field was somehow cleared
   if (!fd.get('user_id') || !fd.get('user_id').toString().trim()) {
     fd.set('user_id', uid);
   }
 
   try {
-    const d = await apiFetch('/submit', { method: 'POST', body: fd });
+    const d = await apiFetch('/submit',{method:'POST',body:fd});
 
     if (!d) {
-      setErr('submit-err', 'Empty response from server. Please try again.');
-      setBtn('submit-btn', 'Submit prediction →', false);
-      busy = false;
-      return;
+      setErr('submit-err','Empty response from server. Please try again.');
+      setBtn('submit-btn','Submit prediction →',false); busy=false; return;
     }
 
-    // Handle resync — backend corrected our round state
     if (d.status === 'resync') {
-      console.log('[submit] resync to round', d.current_round);
-      curRound  = N(d.current_round, curRound);
+      console.log('[submit] resync to round',d.current_round);
+      curRound  = N(d.current_round,curRound);
       nextCache = d.task || null;
       document.getElementById('f-round').value = String(curRound);
-      if (d.task) renderTask(d.task, curRound);
-      busy = false;
-      return;
+      if (d.task) renderTask(d.task,curRound);
+      busy=false; return;
     }
 
-    // Handle backend error — show actual message
     if (d.status === 'error') {
-      const msg = d.msg || 'Submission failed. Please try again.';
-      console.error('[submit] backend error:', d.error_type, msg);
-      setErr('submit-err', msg);
-      setBtn('submit-btn', 'Submit prediction →', false);
-      busy = false;
-      return;
+      console.error('[submit] backend error:',d.error_type,d.msg);
+      setErr('submit-err', d.msg || 'Submission failed. Please try again.');
+      setBtn('submit-btn','Submit prediction →',false); busy=false; return;
     }
 
     if (d.status !== 'ok') {
-      console.error('[submit] unexpected status:', d.status, d);
-      setErr('submit-err', 'Unexpected server response. Please try again.');
-      setBtn('submit-btn', 'Submit prediction →', false);
-      busy = false;
-      return;
+      setErr('submit-err','Unexpected server response. Please try again.');
+      setBtn('submit-btn','Submit prediction →',false); busy=false; return;
     }
 
-    // ── Success path ──────────────────────────────────────
-    const est    = N(d.your_estimate, val);
-    const act    = N(d.true_value, 0);
-    const err    = N(d.error, 0);
-    const abi    = N(d.abi, 0);
-    const relErr = N(d.relative_error, 0);
-    const anchor = N(document.getElementById('disp-anchor').textContent, 50);
-    const sig    = N(document.getElementById('disp-signal').textContent, 50);
+    // Success
+    const est    = N(d.your_estimate,val);
+    const act    = N(d.true_value,0);
+    const err    = N(d.error,0);
+    const abi    = N(d.abi,0);
+    const relErr = N(d.relative_error,0);
+    const anchor = N(document.getElementById('disp-anchor').textContent,50);
+    const sig    = N(document.getElementById('disp-signal').textContent,50);
 
-    rounds.push({ round: curRound, estimate: est, actual: act,
-                  abi, rel_error: relErr, anchor, signal: sig });
+    rounds.push({round:curRound, estimate:est, actual:act, abi, rel_error:relErr, anchor, signal:sig});
     nextCache = d.next_task || null;
 
-    // Show result panel
-    const ep = act > 0 ? (err / act * 100) : 0;
-    const ec = ep < 8 ? 'good' : ep < 20 ? 'warn' : 'bad';
-    document.getElementById('res-est').textContent  = est.toFixed(1) + 'k';
-    document.getElementById('res-act').textContent  = act.toFixed(1) + 'k';
-    document.getElementById('res-err').textContent  = err.toFixed(1) + 'k';
-    document.getElementById('res-err').className    = 'result-val ' + ec;
+    // Result panel
+    const ep  = act>0 ? (err/act*100) : 0;
+    const ec  = ep<8?'good':ep<20?'warn':'bad';
+    document.getElementById('res-est').textContent  = est.toFixed(1)+'k';
+    document.getElementById('res-act').textContent  = act.toFixed(1)+'k';
+    document.getElementById('res-err').textContent  = (ep<8?'−':ep<20?'~':'')+err.toFixed(1)+'k';
+    document.getElementById('res-err').className    = 'result-val '+ec;
     document.getElementById('res-mech').textContent = d.abi_interpretation || '';
 
-    if (cond === 'treatment' && d.intervention) {
+    if (d.intervention) {
       document.getElementById('istrip-text').textContent = d.intervention;
       document.getElementById('istrip').style.display    = 'block';
     }
 
-    document.getElementById('result-panel').style.display     = 'block';
+    const rp = document.getElementById('result-panel');
+    rp.style.display = 'block';
+    setTimeout(()=>rp.classList.add('visible'), 20);
+
     document.getElementById('input-section').style.display     = 'none';
     document.getElementById('reasoning-section').style.display = 'none';
     document.getElementById('submit-btn').style.display        = 'none';
     document.getElementById('next-btn').style.display          = 'block';
 
     const isLast = !!d.session_complete;
-    curRound = isLast ? TOTAL : N(d.next_round, curRound + 1);
+    curRound = isLast ? TOTAL : N(d.next_round, curRound+1);
     document.getElementById('next-btn').textContent =
-      isLast ? 'View analysis →' : 'Next round →';
+      isLast ? 'View full analysis →' : 'Continue to next round →';
 
     busy = false;
 
-  } catch (e) {
-    console.error('[submit] FAILED after retries:', e);
-    setErr('submit-err', `Request failed: ${e.message}. Please try again.`);
-    setBtn('submit-btn', 'Submit prediction →', false);
+  } catch(e) {
+    console.error('[submit] FAILED after retries:',e);
+    setErr('submit-err',`Request failed: ${e.message}. Please try again.`);
+    setBtn('submit-btn','Submit prediction →',false);
     busy = false;
   }
 });
 
 /* ─────────────────────────────────────────────────────────────
-   ADVANCE ROUND
+   ADVANCE
 ───────────────────────────────────────────────────────────── */
 function advance() {
   const isLast = document.getElementById('next-btn').textContent.includes('analysis');
   if (isLast) { showAnalysis(); return; }
 
-  const done   = curRound - 1;
-  const reveal = done > 0 && done % REVEAL === 0;
-
-  if (reveal) {
-    showReveal(done);
-  } else {
-    loadNextRound();
-  }
+  const done   = curRound-1;
+  const reveal = done>0 && done%REVEAL===0;
+  if (reveal) showReveal(done);
+  else loadNextRound();
 }
 
 function loadNextRound() {
   if (nextCache) {
-    renderTask(nextCache, curRound);
-    nextCache = null;
-    return;
+    renderTask(nextCache, curRound); nextCache=null; return;
   }
-
-  // Fallback: re-call /start to get current task
-  // This should rarely happen — next_task is always in the submit response
   console.warn('[loadNextRound] nextCache empty, fetching /start');
-  setBtn('next-btn', 'Loading…', true);
-
+  setBtn('next-btn','Loading…',true);
   const fd = new FormData();
-  fd.append('user_id', uid);
-  fd.append('condition', cond);
-
-  apiFetch('/start', { method: 'POST', body: fd })
-    .then(d => {
-      if (d && d.status === 'ok' && d.task) {
-        curRound  = N(d.current_round, curRound);
-        nextCache = d.task;
-        renderTask(d.task, curRound);
+  fd.append('user_id',uid); fd.append('condition',cond);
+  apiFetch('/start',{method:'POST',body:fd})
+    .then(d=>{
+      if(d&&d.status==='ok'&&d.task){
+        curRound=N(d.current_round,curRound); nextCache=d.task; renderTask(d.task,curRound);
       } else {
-        const msg = (d && d.msg) || 'Could not load next round.';
-        setErr('submit-err', msg);
-        setBtn('next-btn', 'Next round →', false);
+        setErr('submit-err',(d&&d.msg)||'Could not load next round.');
+        setBtn('next-btn','Continue to next round →',false);
       }
     })
-    .catch(e => {
-      console.error('[loadNextRound] FAILED:', e);
-      setErr('submit-err', `Could not load next round: ${e.message}`);
-      setBtn('next-btn', 'Next round →', false);
+    .catch(e=>{
+      setErr('submit-err',`Could not load next round: ${e.message}`);
+      setBtn('next-btn','Continue to next round →',false);
     });
 }
 
@@ -640,131 +702,117 @@ function loadNextRound() {
 ───────────────────────────────────────────────────────────── */
 function showReveal(upTo) {
   const from  = revealFrom;
-  const batch = rounds.filter(r => r.round >= from && r.round <= upTo);
-
-  document.getElementById('reveal-eyebrow').textContent =
-    'Rounds ' + from + '–' + upTo + ' results';
-
-  const c = document.getElementById('reveal-cards');
-  c.innerHTML = '';
-
-  batch.forEach(r => {
-    const est  = N(r.estimate, 0);
-    const act  = N(r.actual, 0);
-    const d    = est - act;
-    const ep   = act ? Math.abs(d / act) * 100 : 0;
-    const cc   = ep < 8 ? 'accurate' : ep < 20 ? 'close' : 'off';
-    const dc   = ep < 8 ? 'delta-good' : ep < 20 ? 'delta-mid' : 'delta-bad';
-    const sign = d >= 0 ? '+' : '';
-    c.innerHTML += `
-      <div class="reveal-card ${cc}">
-        <span class="reveal-round">Round ${r.round}</span>
-        <div class="reveal-numbers">
-          <div class="reveal-num">
-            <p class="reveal-num-label">Your prediction</p>
-            <p class="reveal-num-val">${est.toFixed(1)}k</p>
-          </div>
-          <div class="reveal-num">
-            <p class="reveal-num-label">Actual figure</p>
-            <p class="reveal-num-val">${act.toFixed(1)}k</p>
-          </div>
-          <span class="reveal-delta ${dc}">${sign}${d.toFixed(1)}k</span>
-        </div>
-      </div>`;
+  const batch = rounds.filter(r=>r.round>=from&&r.round<=upTo);
+  document.getElementById('reveal-eyebrow').textContent = 'Rounds '+from+'–'+upTo+' results';
+  const c = document.getElementById('reveal-cards'); c.innerHTML='';
+  batch.forEach(r=>{
+    const est=N(r.estimate,0),act=N(r.actual,0),d=est-act;
+    const ep=act?Math.abs(d/act)*100:0;
+    const cc=ep<8?'accurate':ep<20?'close':'off';
+    const dc=ep<8?'delta-good':ep<20?'delta-mid':'delta-bad';
+    const sign=d>=0?'+':'';
+    c.innerHTML+=`<div class="reveal-card ${cc}"><span class="reveal-round">Round ${r.round}</span><div class="reveal-numbers"><div class="reveal-num"><p class="reveal-num-label">Your prediction</p><p class="reveal-num-val">${est.toFixed(1)}k</p></div><div class="reveal-num"><p class="reveal-num-label">Actual figure</p><p class="reveal-num-val">${act.toFixed(1)}k</p></div><span class="reveal-delta ${dc}">${sign}${d.toFixed(1)}k</span></div></div>`;
   });
-
-  revealFrom = upTo + 1;
+  revealFrom = upTo+1;
   show('s-reveal');
 }
 
 function afterReveal() {
-  show('s-task');
-  loadNextRound();
+  show('s-task'); loadNextRound();
 }
 
 /* ─────────────────────────────────────────────────────────────
-   MATH HELPERS (for analysis screen)
-───────────────────────────────────────────────────────────── */
-function mean(a)   { return a.length ? a.reduce((s,v)=>s+N(v),0)/a.length : 0; }
-function std(a)    { if(a.length<2)return 0; const m=mean(a); return Math.sqrt(a.reduce((s,v)=>s+Math.pow(N(v)-m,2),0)/a.length); }
-function corrArr(x,y) {
-  if(!x||!y||x.length<3||x.length!==y.length)return 0;
-  const mx=mean(x),my=mean(y);
-  let n=0,dx=0,dy=0;
-  for(let i=0;i<x.length;i++){const xi=N(x[i])-mx,yi=N(y[i])-my;n+=xi*yi;dx+=xi*xi;dy+=yi*yi;}
-  const d=Math.sqrt(dx*dy); return d>1e-6?n/d:0;
-}
-function slopeArr(x,y) {
-  if(!x||!y||x.length<3)return 0;
-  const mx=mean(x),my=mean(y);
-  let n=0,d=0;
-  for(let i=0;i<x.length;i++){const xi=N(x[i])-mx;n+=xi*(N(y[i])-my);d+=xi*xi;}
-  return d>1e-6?n/d:0;
-}
-function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
-function fmt(v,dec){ return N(v,0).toFixed(dec!==undefined?dec:3); }
-
-/* ─────────────────────────────────────────────────────────────
-   FINAL ANALYSIS
+   ANALYSIS
 ───────────────────────────────────────────────────────────── */
 function showAnalysis() {
   show('s-analysis');
-
   const n = rounds.length;
   if (!n) return;
 
-  const abis   = rounds.map(r => N(r.abi, 0));
-  const rerrs  = rounds.map(r => N(r.rel_error, 0));
-  const ests   = rounds.map(r => N(r.estimate, 0));
-  const acts   = rounds.map(r => N(r.actual, 0));
-  const sigs   = rounds.map(r => N(r.signal, 50));
-  const ancs   = rounds.map(r => N(r.anchor, 50));
-  const rnds   = rounds.map(r => N(r.round, 0));
+  const abis   = rounds.map(r=>N(r.abi,0));
+  const rerrs  = rounds.map(r=>N(r.rel_error,0));
+  const ests   = rounds.map(r=>N(r.estimate,0));
+  const acts   = rounds.map(r=>N(r.actual,0));
+  const sigs   = rounds.map(r=>N(r.signal,50));
+  const ancs   = rounds.map(r=>N(r.anchor,50));
+  const rnds   = rounds.map(r=>N(r.round,0));
 
-  // ABI
+  // ── ABI
   const mAbi = mean(abis);
   setMetric('an-abi','an-abi-sub', fmt(mAbi,3),
     Math.abs(mAbi)<.25?'good':Math.abs(mAbi)<.55?'warn':'bad',
-    mAbi>.55?'strong reference alignment detected':mAbi<.15?'largely independent of reference':'moderate reference influence');
+    mAbi>.55?'Your estimates stayed close to the reference value on average.':
+    mAbi<.15?'Your estimates were largely independent of the reference value.':
+    'Your estimates showed moderate influence from the reference value.');
 
-  // CD
-  const cd = slopeArr(rnds, rerrs);
+  // ── CD
+  const cd = slopeArr(rnds,rerrs);
   setMetric('an-cd','an-cd-sub',
     cd<-.001?'↓ improving':cd>.001?'↑ worsening':'→ stable',
     cd<-.001?'good':cd>.001?'bad':'warn',
-    cd<-.001?'error decreased across rounds':cd>.001?'error increased across rounds':'no directional trend detected');
+    cd<-.001?'Your accuracy improved as the study progressed.':
+    cd>.001?'Your prediction errors increased across rounds.':
+    'Your accuracy was consistent throughout the study.');
 
-  // SII
-  const eErr = ests.map((e,i)=>e-acts[i]);
-  const sErr = sigs.map((s,i)=>s-acts[i]);
-  const rSig = (std(sErr)>.01&&std(eErr)>.01) ? corrArr(eErr,sErr) : 0;
-  const sii  = clamp(1-Math.abs(rSig),0,1);
+  // ── SII
+  const eErr=ests.map((e,i)=>e-acts[i]), sErr=sigs.map((s,i)=>s-acts[i]);
+  const rSig=(std(sErr)>.01&&std(eErr)>.01)?corrArr(eErr,sErr):0;
+  const sii=clamp(1-Math.abs(rSig),0,1);
   setMetric('an-sii','an-sii-sub', fmt(sii,3), sii>.7?'good':sii>.4?'warn':'bad',
-    sii>.7?'predictions largely independent of forecast':sii>.4?'moderate forecast influence':'predictions closely tracked the forecast');
+    sii>.7?'Your predictions were largely independent of the market forecast.':
+    sii>.4?'The market forecast had moderate influence on your predictions.':
+    'Your predictions closely tracked the market forecast.');
 
-  // TLI
+  // ── TLI
   const half=Math.max(1,Math.floor(n/2));
   const eStd=std(abis.slice(0,half)), lStd=std(abis.slice(half));
-  const tli = eStd>.01 ? clamp(1-(lStd/eStd),-2,2) : 0;
+  const tli=eStd>.01?clamp(1-(lStd/eStd),-2,2):0;
   setMetric('an-tli','an-tli-sub', fmt(tli,3),
     tli>.4?'warn':Math.abs(tli)<.15?'good':'warn',
-    tli>.4?'bias pattern stabilised (lock-in detected)':tli<-.2?'bias pattern became more variable':'no significant lock-in detected');
+    tli>.4?'Your decision pattern became more consistent and predictable over time.':
+    tli<-.2?'Your decision pattern became more variable in later rounds.':
+    'Your decision pattern showed no strong directional change.');
 
-  // BE
-  const disps = ancs.map((a,i)=>Math.abs(a-acts[i]));
-  const be    = std(disps)>.01 ? slopeArr(disps,abis) : 0;
+  // ── BE
+  const disps=ancs.map((a,i)=>Math.abs(a-acts[i]));
+  const be=std(disps)>.01?slopeArr(disps,abis):0;
   setMetric('an-be','an-be-sub', fmt(be,4),
     Math.abs(be)<.005?'good':Math.abs(be)<.015?'warn':'bad',
-    be>.015?'stronger anchoring with more extreme references':be<-.005?'greater pushback against extreme references':'anchoring not sensitive to reference magnitude');
+    be>.015?'Larger gaps between reference and true values drew your estimates toward the reference more strongly.':
+    be<-.005?'You pushed back more against references that were far from the true value.':
+    'The size of the gap between reference and true values did not strongly affect your estimates.');
 
-  // ADS
-  const adjs = rounds.map(r=>Math.abs(N(r.estimate,0)-N(r.anchor,50)));
-  const ads  = (std(disps)>.01&&std(adjs)>.01) ? corrArr(adjs,disps) : 0;
+  // ── ADS
+  const adjs=rounds.map(r=>Math.abs(N(r.estimate,0)-N(r.anchor,50)));
+  const ads=(std(disps)>.01&&std(adjs)>.01)?corrArr(adjs,disps):0;
   setMetric('an-ads','an-ads-sub', fmt(ads,3), ads>.3?'good':ads>0?'warn':'bad',
-    ads>.3?'adjusts more against extreme references':ads<0?'less adjustment against extreme references':'adjustment not sensitive to reference extremity');
+    ads>.3?'You adjusted away from the reference more when it was extreme — a sign of partial self-correction.':
+    ads<0?'Your adjustments were smaller when the reference was most extreme.':
+    'Your degree of adjustment was not clearly related to how extreme the reference was.');
 
-  // ABI tracks
-  const tc = document.getElementById('abi-tracks'); tc.innerHTML='';
+  // ── RABI (client-side computation using existing signals)
+  const magnitude = mean(abis.map(a=>Math.abs(a)));
+  const directionConsistency = abis.filter(a=>a>0).length / Math.max(abis.length,1);
+  const rSigForRabi = (std(sErr)>.01&&std(eErr)>.01)?Math.max(0,corrArr(eErr,sErr)):0.5;
+  const anchorPref = Math.max(0, magnitude - rSigForRabi*0.3);
+  const rabiRaw = 0.5*Math.min(magnitude,1) + 0.3*directionConsistency + 0.2*Math.min(anchorPref,1);
+  const rabiScore = clamp(rabiRaw,0,1);
+  const rabiBand = rabiScore<.25?'low':rabiScore<.55?'moderate':'high';
+  const rabiInterp = rabiScore<.25
+    ? 'Your predictions showed low susceptibility to the reference figure. You adjusted substantially away from it in most rounds.'
+    : rabiScore<.55
+    ? 'Your predictions showed moderate susceptibility to the reference figure. The pattern varied — some rounds tracked it closely, others did not.'
+    : 'Your predictions showed high susceptibility to the reference figure. Estimates consistently remained close to it across rounds.';
+
+  const rabiEl = document.getElementById('an-rabi');
+  if(rabiEl){ rabiEl.textContent=fmt(rabiScore,3); rabiEl.className='metric-value rabi-score '+(rabiScore<.25?'good':rabiScore<.55?'warn':'bad'); }
+  const rabiBandEl = document.getElementById('an-rabi-band');
+  if(rabiBandEl){ rabiBandEl.textContent=rabiBand+' susceptibility'; rabiBandEl.className='rabi-band '+rabiBand; }
+  const rabiInterpEl = document.getElementById('an-rabi-interp');
+  if(rabiInterpEl) rabiInterpEl.textContent = rabiInterp;
+
+  // ── ABI trajectory bars
+  const tc=document.getElementById('abi-tracks'); tc.innerHTML='';
   [{l:'1–5',v:abis.slice(0,5)},{l:'6–10',v:abis.slice(5,10)},
    {l:'11–15',v:abis.slice(10,15)},{l:'16–20',v:abis.slice(15,20)}].forEach(g=>{
     if(!g.v.length)return;
@@ -773,70 +821,136 @@ function showAnalysis() {
     tc.innerHTML+=`<div class="abi-track"><span class="abi-track-label">${g.l}</span><div class="abi-track-bar"><div class="abi-track-fill" style="width:${pct.toFixed(1)}%;background:${col};"></div></div><span class="abi-track-val">${avg.toFixed(2)}</span></div>`;
   });
 
-  // CSS states
-  const cc = document.getElementById('css-states'); cc.innerHTML='';
+  // ── CSS states
+  const cc=document.getElementById('css-states'); cc.innerHTML='';
   let tr=0, prev=null;
   abis.forEach(a=>{
     const s=a<.2?'under':a<.6?'moderate':'over';
     const l=a<.2?'independent':a<.6?'moderate':'aligned';
-    if(prev!==null&&prev!==s)tr++;
-    prev=s;
+    if(prev!==null&&prev!==s)tr++; prev=s;
     cc.innerHTML+=`<span class="css-state css-${s}">${l}</span>`;
   });
   const csel=document.getElementById('css-summary');
-  if(csel) csel.textContent=tr+' state transition'+(tr!==1?'s':'')+' across '+n+' rounds — '+(tr<=3?'stable pattern':tr<=7?'moderate variability':'high variability');
+  if(csel) csel.textContent=tr+' state transition'+(tr!==1?'s':'')+' across '+n+' rounds — '+(tr<=3?'stable, consistent pattern':tr<=7?'moderate variability in decision style':'high variability — decision approach shifted frequently');
 
-  // Insight
-  let ins='';
+  // ── Multi-layer insights
+  // Primary pattern
+  let primary='';
   if(Math.abs(mAbi)>.55&&tli>.3)
-    ins='Your predictions showed strong and stable alignment with the reference figure. The pattern locked in across rounds — your estimates consistently tracked the reference regardless of how far it was from the actual outcome.';
+    primary='Your dominant pattern was consistent alignment with the reference figure. Estimates reliably stayed close to it across rounds, regardless of how far the reference was from the actual outcome. This is a classic anchoring signature — the reference served as a gravitational pull on your judgments.';
   else if(Math.abs(mAbi)<.2&&sii>.6)
-    ins='Your predictions were largely independent of both the reference figure and the market forecast. You appear to have formed judgments from your own baseline rather than the provided values.';
+    primary='Your dominant pattern was independence from both the reference figure and the market forecast. You appear to have relied on an internal baseline rather than the external values provided. This is consistent with a self-anchored decision strategy.';
+  else if(rabiScore>.55)
+    primary='Your predictions showed a persistent pull toward the reference figure across rounds. Even when the reference was far from the actual outcome, your estimates tended to stay in its vicinity rather than correcting fully toward the true value.';
   else if(be>.015)
-    ins='Your alignment with the reference figure increased when the reference was more extreme. This pattern suggests susceptibility to strong anchors specifically, rather than uniform reference influence.';
-  else if(ads>.35)
-    ins='You showed a tendency to adjust away from the reference figure when it was more extreme — a partial correction response. This is associated with awareness of reference unreliability.';
-  else if(cd>.001)
-    ins='Your prediction error increased across rounds. This may reflect accumulated uncertainty, strategy shifts, or fatigue effects in later rounds.';
-  else if(cd<-.001)
-    ins='Your accuracy improved across rounds. Error in the final block was meaningfully lower than in the opening rounds, suggesting adaptation or learning within the session.';
+    primary='Your anchoring susceptibility was strongest when reference values were most extreme. This suggests a graded rather than uniform response — the strength of the pull increased with the magnitude of the reference.';
   else
-    ins='Your predictions showed moderate reference influence with no strong directional trend across rounds. No single behavioral pattern dominated your decision profile.';
+    primary='Your prediction behavior showed a mixed pattern — neither strongly independent of the reference value nor consistently aligned with it. Decision strategy appeared to vary across rounds rather than following a single stable approach.';
 
-  const ie=document.getElementById('insight-text');
-  if(ie) ie.textContent=ins;
+  // Temporal dynamics
+  let temporal='';
+  const earlyAbi=mean(abis.slice(0,half)), lateAbi=mean(abis.slice(half));
+  const abiDrift=lateAbi-earlyAbi;
+  if(Math.abs(abiDrift)>.15&&cd<-.001)
+    temporal=`Reference alignment ${abiDrift>0?'increased':'decreased'} across rounds while prediction accuracy ${cd<-.001?'improved':'worsened'}. This ${abiDrift>0?'suggests growing reliance on the reference as a coping mechanism for a demanding task':'suggests successful adjustment away from the reference, contributing to accuracy gains'}.`;
+  else if(tli>.4)
+    temporal='Your decision pattern became more stable and predictable in later rounds. The variability in reference alignment that appeared early in the study settled into a consistent approach — a pattern consistent with habit formation under repeated decision conditions.';
+  else if(tli<-.2)
+    temporal='Your decision pattern became more variable in later rounds. Increased variability late in the study may reflect strategic exploration, fatigue, or responding to the periodic accuracy feedback received during batch reveals.';
+  else if(cd<-.001)
+    temporal=`Accuracy improved progressively across rounds. Your mean error in rounds 11–20 was lower than in rounds 1–10, suggesting either learning from feedback, better calibration over time, or reduced susceptibility to the reference value.`;
+  else
+    temporal='Your decision pattern was largely stable across rounds. Neither reference alignment nor prediction accuracy showed strong directional change from early to late rounds, indicating a consistent decision approach throughout.';
 
-  // Robustness — non-blocking async fetch
-  apiFetch('/robustness/' + encodeURIComponent(uid), { method: 'GET' })
-    .then(rb => {
-      if (!rb || rb.status === 'insufficient_data') {
-        document.getElementById('rob-note').textContent =
-          'Reliability indicators require at least 5 completed rounds.';
-        return;
+  // Cross-metric relationships
+  let cross='';
+  if(Math.abs(mAbi)>.4&&sii<.4)
+    cross='Both reference alignment (ABI) and forecast influence (SII) were elevated. Your predictions were drawn toward the reference figure and also correlated with the market forecast. Since both signals moved in the same direction in many rounds, it is difficult to disentangle their independent effects.';
+  else if(Math.abs(mAbi)>.4&&sii>.6)
+    cross='High reference alignment coexisted with forecast independence. You stayed close to the "last month\'s figure" reference while ignoring the market forecast — suggesting the historical value was the primary anchor, not the external prediction.';
+  else if(Math.abs(mAbi)<.2&&ads>.3)
+    cross='Low reference alignment combined with active self-correction when references were extreme. This combination suggests you were aware of the reference and deliberately adjusted away from it, particularly when it was most extreme.';
+  else if(be>.015&&tli>.3)
+    cross='Sensitivity to extreme anchors (BE) combined with pattern lock-in (TLI) suggests a specific vulnerability: when references were far from realistic values, they had the strongest pull, and this tendency became more entrenched over time rather than correcting.';
+  else
+    cross='The metrics paint a consistent picture. No strong cross-metric contradictions were detected — your reference alignment, forecast usage, and self-correction tendency were all in the moderate range and did not show opposing patterns that would suggest strategic switching.';
+
+  const pp=document.getElementById('insight-primary'); if(pp)pp.textContent=primary;
+  const tp=document.getElementById('insight-temporal'); if(tp)tp.textContent=temporal;
+  const cp=document.getElementById('insight-cross'); if(cp)cp.textContent=cross;
+
+  // ── IES + robustness — async, non-blocking
+  apiFetch('/full_analysis/'+encodeURIComponent(uid),{method:'GET'})
+    .then(fa=>{
+      if(!fa||fa.status==='no_data'){return;}
+
+      // IES
+      const ies=fa.ies||{};
+      const iesScore=ies.ies_score;
+      const iesEl=document.getElementById('an-ies');
+      if(iesEl){
+        if(iesScore===null||iesScore===undefined){
+          iesEl.textContent='N/A'; iesEl.className='metric-value warn';
+        } else {
+          iesEl.textContent=fmt(iesScore,3);
+          iesEl.className='metric-value '+(iesScore>.1?'good':iesScore>-.05?'warn':'bad');
+        }
       }
-      const cs   = rb.confidence_summary || {};
-      const stab = cs.abi_stability || 'unknown';
-      const rel  = cs.reliability   || 'unknown';
-      const cons = cs.consistency   || 'unknown';
-      const ovr  = cs.overall       || 'unknown';
-      const sep  = rb.null_model && rb.null_model.separation !== undefined
-        ? N(rb.null_model.separation, 0) : null;
+      // IES bar: map [-1,1] to [0,100%]
+      const iesBar=document.getElementById('ies-bar');
+      if(iesBar&&iesScore!==null&&iesScore!==undefined){
+        const pct=clamp((iesScore+1)/2*100,0,100);
+        const col=iesScore>.1?'#2EAA6A':iesScore>-.05?'#C9A84C':'#DC5050';
+        iesBar.style.width=pct.toFixed(1)+'%'; iesBar.style.background=col;
+      }
+      const iesInterpEl=document.getElementById('an-ies-interp');
+      if(iesInterpEl) iesInterpEl.textContent=ies.interpretation||'No intervention data available.';
 
-      setConf('cd-abi','cl-abi', stab, 'stability: '  + stab);
-      setConf('cd-cd', 'cl-cd',  rel,  'reliability: ' + rel);
-      setConf('cd-sii','cl-sii', cons, 'consistency: ' + cons);
-      setConf('cd-tli','cl-tli', rel,  'split-half: '  + rel);
+      // Robustness
+      const rb=fa.confidence_summary||{};
+      const sens=fa.sensitivity||{};
+      const sh=fa.split_half||{};
+      const stab=rb.abi_stability||'unknown';
+      const rel=rb.reliability||'unknown';
+      const cons=rb.consistency||'unknown';
+      const ovr=rb.overall||'unknown';
+      const sep=fa.null_model&&fa.null_model.separation!==undefined?N(fa.null_model.separation,0):null;
 
-      document.getElementById('rob-note').textContent =
-        'Overall metric confidence: ' + ovr.toUpperCase() +
-        (sep !== null ? ' — separation from random baseline: ' + sep.toFixed(3) : '') +
-        '. Based on perturbation stability, split-half reliability, internal consistency, and null model benchmarking.';
+      setConf('cd-abi','cl-abi',stab,'stability: '+stab);
+      setConf('cd-cd','cl-cd',rel,'reliability: '+rel);
+      setConf('cd-sii','cl-sii',cons,'consistency: '+cons);
+      setConf('cd-tli','cl-tli',rel,'split-half: '+rel);
+
+      document.getElementById('rob-note').textContent=
+        'Overall metric confidence: '+ovr.toUpperCase()+
+        (sep!==null?' — separation from random baseline: '+sep.toFixed(3):'')+
+        '. Confidence is derived from perturbation stability, split-half reliability, internal consistency, and null model benchmarking.';
     })
-    .catch(e => {
-      console.warn('[robustness] fetch failed:', e.message);
-      document.getElementById('rob-note').textContent =
-        'Reliability indicators could not be computed for this session.';
+    .catch(e=>{
+      console.warn('[full_analysis] fetch failed:',e.message);
+      document.getElementById('rob-note').textContent='Reliability indicators could not be computed.';
+      const iesInterpEl=document.getElementById('an-ies-interp');
+      if(iesInterpEl) iesInterpEl.textContent='Intervention data unavailable.';
     });
+
+  // Robustness fallback via /robustness if full_analysis fails
+  apiFetch('/robustness/'+encodeURIComponent(uid),{method:'GET'})
+    .then(rb=>{
+      if(!rb||rb.status==='insufficient_data')return;
+      const cs=rb.confidence_summary||{};
+      // Only update if rob-note still says computing
+      const rn=document.getElementById('rob-note');
+      if(rn&&rn.textContent.includes('Computing')){
+        const sep=rb.null_model&&rb.null_model.separation!==undefined?N(rb.null_model.separation,0):null;
+        rn.textContent='Overall metric confidence: '+(cs.overall||'unknown').toUpperCase()+
+          (sep!==null?' — separation from random baseline: '+sep.toFixed(3):'')+'.';
+        setConf('cd-abi','cl-abi',cs.abi_stability||'unknown','stability: '+(cs.abi_stability||'—'));
+        setConf('cd-cd','cl-cd',cs.reliability||'unknown','reliability: '+(cs.reliability||'—'));
+        setConf('cd-sii','cl-sii',cs.consistency||'unknown','consistency: '+(cs.consistency||'—'));
+        setConf('cd-tli','cl-tli',cs.reliability||'unknown','split-half: '+(cs.reliability||'—'));
+      }
+    })
+    .catch(()=>{});
 }
 </script>
 </body>
