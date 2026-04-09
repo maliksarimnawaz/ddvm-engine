@@ -135,25 +135,84 @@
 <div id="s-intro" class="screen active">
   <div class="fade-up">
     <p class="eyebrow">Study instructions</p>
-    <h1>Market<br><em>forecasting</em></h1>
+    <h1>Decision<br><em>test</em></h1>
   </div>
+
   <div class="divider-gold"></div>
+
   <div class="panel fade-up-2" style="margin-bottom:28px;">
-    <p style="font-size:15px;line-height:1.85;color:var(--text-2);">You will review data for a series of startups and predict their monthly user counts. Each round presents two reference figures — use them, ignore them, or weigh them as you see fit.</p>
+
+    <!-- Core pitch -->
+    <p style="font-size:15px;line-height:1.85;color:var(--text-2);">
+      You are about to complete a short test of your judgment under uncertainty.<br><br>
+
+      Most people believe they rely on logic when making predictions. In reality, subtle cues often shape decisions without awareness.<br><br>
+
+      In each round, you will see limited information about a startup and estimate its monthly user count. The information provided is incomplete.<br><br>
+
+      Your responses are recorded and analyzed to reveal how you form judgments — and how your decisions evolve under uncertainty.
+    </p>
+
+    <!-- Structure -->
     <div style="margin-top:24px;padding-top:24px;border-top:.5px solid var(--border);">
-      <div style="display:flex;gap:14px;margin-bottom:12px;"><span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span><p style="font-size:14px;color:var(--text);line-height:1.6;"><strong>20 rounds.</strong> Each round takes about 30 seconds.</p></div>
-      <div style="display:flex;gap:14px;margin-bottom:12px;"><span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span><p style="font-size:14px;color:var(--text);line-height:1.6;">Every 5 rounds you will see a <strong>summary of your accuracy</strong> so far.</p></div>
-      <div style="display:flex;gap:14px;margin-bottom:12px;"><span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span><p style="font-size:14px;color:var(--text);line-height:1.6;">At the end you will receive a <strong>full behavioral analysis</strong> of your decision patterns.</p></div>
-      <div style="display:flex;gap:14px;"><span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span><p style="font-size:14px;color:var(--text);line-height:1.6;">The market forecast <strong>may or may not be accurate</strong> — trust your own judgment.</p></div>
+
+      <div style="display:flex;gap:14px;margin-bottom:12px;">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
+        <p style="font-size:14px;color:var(--text);line-height:1.6;">
+          <strong>20 rounds.</strong> Each requires a quick estimate.
+        </p>
+      </div>
+
+      <div style="display:flex;gap:14px;margin-bottom:12px;">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
+        <p style="font-size:14px;color:var(--text);line-height:1.6;">
+          Information is limited. There is <strong>no single correct strategy</strong>.
+        </p>
+      </div>
+
+      <div style="display:flex;gap:14px;margin-bottom:12px;">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
+        <p style="font-size:14px;color:var(--text);line-height:1.6;">
+          You will periodically see <strong>feedback on your accuracy</strong>.
+        </p>
+      </div>
+
+      <div style="display:flex;gap:14px;">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--gold);min-width:18px;padding-top:1px;">—</span>
+        <p style="font-size:14px;color:var(--text);line-height:1.6;">
+          At the end, you will receive a <strong>behavioral profile</strong> of your decision patterns.
+        </p>
+      </div>
+
     </div>
+
+    <!-- Hook -->
+    <p style="margin-top:22px;font-size:14px;color:var(--text);line-height:1.7;">
+      This is not a knowledge test — it reveals how you actually think.
+    </p>
+
+    <!-- Subtle autonomy cue -->
+    <p style="margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--text-3);letter-spacing:.04em;">
+      Most people rely on different strategies — use yours.
+    </p>
+
   </div>
+
+  <!-- ID input -->
   <div class="field fade-up-3">
     <label for="uid-input">Participant ID</label>
-    <input type="text" id="uid-input" placeholder="Choose any identifier, e.g. falcon_42" autocomplete="off" spellcheck="false">
-    <p style="font-family:var(--mono);font-size:10px;color:var(--text-3);margin-top:8px;letter-spacing:.05em;">No personal information is collected. This ID links your responses across rounds only.</p>
+    <input type="text" id="uid-input" placeholder="Enter any identifier" autocomplete="off" spellcheck="false">
+    <p style="font-family:var(--mono);font-size:10px;color:var(--text-3);margin-top:8px;letter-spacing:.05em;">
+      This identifier links your responses across rounds. No personal data is collected.
+    </p>
   </div>
+
   <div class="err-msg" id="start-err"></div>
-  <button class="btn btn-full fade-up-3" id="start-btn" onclick="startStudy()">Begin study →</button>
+
+  <!-- CTA -->
+  <button class="btn btn-full fade-up-3" id="start-btn" onclick="startStudy()">
+    Start test →
+  </button>
 </div>
 
 <!-- ══ TASK ══ -->
